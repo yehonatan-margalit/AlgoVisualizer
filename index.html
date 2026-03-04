@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Algorithm Lab - Yehonatan's Edition</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    
+    <style>
+        /* ================= עיצוב כללי ================= */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f0f2f5; overflow: hidden; }
+        
+        .tab-bar { background: #1abc9c; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 20; display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
+        .tab-btn { background: transparent; color: #e8f8f5; border: none; border-bottom: 3px solid transparent; padding: 8px 15px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.3s; margin: 0; border-radius: 0; }
+        .tab-btn:hover { color: #fff; transform: none; }
+        .tab-btn.active { color: #fff; border-bottom: 3px solid #f1c40f; }
+
+        .workspace { display: none; flex-direction: column; flex-grow: 1; position: relative; }
+        .workspace.active { display: flex; }
+
+        .controls { padding: 15px; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; flex-wrap: wrap; }
+        .instructions { color: #ecf0f1; text-align: center; padding: 8px; font-size: 14px; z-index: 9; }
+        
+        .cy-container { flex-grow: 1; width: 100%; background-color: white; cursor: crosshair; }
+        
+        select, button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; font-size: 13px; transition: transform 0.2s; }
+        button:hover { transform: scale(1.05); }
+        
+        #status-box { background: #ecf0f1; padding: 5px 15px; border-radius: 20px; color: #2c3e50; font-size: 0.85rem; margin-right: auto; }
+        
+        .btn-reset { background-color: #f39c12; color: white; margin-right: auto; }
+        .btn-clear { background-color: #c0392b; color: white; }
+        .btn-insight { background-color: #f1c40f; color: #2c3e50; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+        
+        /* פאנלים מרחפים */
+        .floating-panel { position: absolute; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 10; }
+        #results-panel { top: 130px; right: 20px; min-width: 180px; max-height: 45vh; overflow-y: auto; }
+        #insight-panel { top: 130px; left: 20px; background: #fffde7; border-right: 5px solid #fbc02d; width: 260px; display: none; }
+        #ds-panel { bottom: 30px; right: 20px; min-width: 200px; max-width: 320px; display: none; }
+        
+        table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 6px; border-bottom: 1px solid #ddd; }
+        #ds-visualizer { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; min-height: 40px; padding: 10px; background: #ecf0f1; border-radius: 5px; border: 2px dashed #bdc3c7; }
+        .ds-item { background-color: #3498db; color: white; padding: 4px 8px; font-weight: bold; border-radius: 4px; font-size: 12px; }
+        .insight-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #fbc02d; padding-bottom: 8px; }
+        .insight-select { padding: 4px; font-size: 12px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; }
+        .insight-tag { font-weight: bold; color: #2c3e50; }
+
+        /* סביבה 1: כפתורים */
+        .btn-dfs { background-color: #27ae60; color: white; }
+        .btn-bfs { background-color: #8e44ad; color: white; }
+        .btn-dijkstra { background-color: #2980b9; color: white; }
+        .btn-bellman { background-color: #d35400; color: white; }
+
+        /* סביבה 2: כפתורים */
+        .btn-flow-action { background-color: #3498db; color: white; border: 1px solid #fff; }
+        .btn-flow-push { background-color: #2ecc71; color: white; border: 1px solid #fff; }
+        .btn-flow-dinic { background-color: #8e44ad; color: white; border: 1px solid #fff; }
+
+        /* סביבה 3: כפתורים */
+        .btn-mst-prim { background-color: #16a085; color: white; border: 1px solid #fff; }
+        .btn-mst-kruskal { background-color: #2980b9; color: white; border: 1px solid #fff; }
+        
+        .legal-notice { text-align: center; font-size: 12px; color: #7f8c8d; padding: 10px; background-color: #f0f2f5; }
+    </style>
+</head>
+<body>
+
+<div class="tab-bar">
+    <button id="tab-paths" class="tab-btn active" onclick="switchWorkspace('paths')">מסלולים קצרים (מכוון)</button>
+    <button id="tab-mst" class="tab-btn" onclick="switchWorkspace('mst')">עפ"מ - MST (לא מכוון)</button>
+    <button id="tab-flow" class="tab-btn" onclick="switchWorkspace('flow')">רשתות זרימה (Max Flow)</button>
+</div>
+
+<div id="workspace-paths" class="workspace active">
+    <div class="controls" style="background: #2c3e50;">
+        <label for="startNodeSelect">התחלה:</label>
+        <select id="startNodeSelect"></select>
+        <button class="btn-dfs" onclick="runDFS()">DFS</button>
+        <button class="btn-bfs" onclick="runBFS()">BFS</button>
+        <button class="btn-dijkstra" onclick="runDijkstra()">Dijkstra</button>
+        <button class="btn-bellman" onclick="runBellmanFord()">Bellman-Ford</button>
+        <button class="btn-insight" onclick="toggleInsight()">💡 תובנות</button>
+        <button class="btn-reset" onclick="resetGraphStatusPaths()">איפוס</button>
+        <button class="btn-clear" onclick="clearBoardPaths()">נקה לוח</button>
+        <div id="status-box">סטטוס: <strong id="status-paths">מצב עריכה</strong></div>
+    </div>
+    <div class="instructions" style="background: #34495e;">לחץ להוספת צומת | לחץ על שני צמתים למתיחת קשת. <strong>גרף מכוון (Directed)</strong></div>
+    <div id="cy-paths" class="cy-container"></div>
+</div>
+
+<div id="workspace-mst" class="workspace">
+    <div class="controls" style="background: #27ae60;">
+        <span style="font-weight: bold; font-size: 14px; color: #ecf0f1;">אלגוריתמים:</span>
+        <label for="startNodeMstSelect">התחלה (לפרים):</label>
+        <select id="startNodeMstSelect"></select>
+        
+        <button class="btn-mst-prim" onclick="runPrim()">הרץ פרים (Prim)</button>
+        <button class="btn-mst-kruskal" onclick="runKruskal()">הרץ קרוסקל (Kruskal)</button>
+        <button class="btn-insight" onclick="toggleInsight()">💡 תובנות</button>
+        
+        <button class="btn-reset" onclick="resetGraphStatusMst()" style="margin-right: auto; background-color: #f39c12;">איפוס עפ"מ</button>
+        <button class="btn-clear" onclick="clearBoardMst()">נקה לוח</button>
+        
+        <div id="status-box" style="background: #fff;">משקל העפ"מ: <strong id="mst-weight-val" style="color:#27ae60; font-size:16px;">0</strong></div>
+    </div>
+    <div class="instructions" style="background: #2ecc71; color: #2c3e50; font-weight: bold;">
+        הקשתות כאן הן <strong>דו-כיווניות (לא מכוונות)</strong>. לחץ על הרקע להוספת צומת, ועל שני צמתים למתיחת קשת.
+    </div>
+    <div id="cy-mst" class="cy-container"></div>
+</div>
+
+<div id="workspace-flow" class="workspace">
+    <div class="controls" style="background: #1a252f; align-items: start; flex-direction: column; gap: 8px;">
+        <div style="display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: wrap;">
+            <span style="font-weight: bold; font-size: 14px; color: #f1c40f;">אדמונדס-קארפ:</span>
+            <button class="btn-flow-action" onclick="findAugmentingPathBFS()">חיפוש מסלול</button>
+            <button class="btn-flow-push" onclick="pushFlow()">דחיפת זרימה</button>
+            <span style="border-right: 1px solid #7f8c8d; height: 20px; margin: 0 5px;"></span>
+            <span style="font-weight: bold; font-size: 14px; color: #9b59b6;">דיניץ (Dinic):</span>
+            <button class="btn-flow-dinic" onclick="buildDinicLevelGraph()">1. בנה רמות</button>
+            <button class="btn-flow-dinic" style="background-color: #9b59b6;" onclick="pushDinicBlockingFlow()">2. זרימה חוסמת</button>
+            <button class="btn-flow-dinic" style="background-color: #e67e22;" onclick="runDinicAuto()">הרצה אוטומטית ⚡</button>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: wrap;">
+            <button class="btn-insight" onclick="toggleInsight()">💡 תובנות</button>
+            <button class="btn-reset" onclick="resetFlowGraph()" style="margin-right: auto;">איפוס זרימה</button>
+            <button class="btn-clear" onclick="clearFlowBoard()">נקה לוח</button>
+            <div id="status-box" style="background: #2c3e50; color:white;">
+                זרימה מקסימלית: <strong id="max-flow-val" style="color:#2ecc71; font-size:16px;">0</strong>
+            </div>
+        </div>
+    </div>
+    <div class="instructions" style="background: #2c3e50;"><strong>מצב זרימה/קיבולת.</strong> המקור הוא s, הבור הוא t.</div>
+    <div id="status-flow-text" style="background: #fff; text-align:center; padding: 5px; font-weight:bold; color: #2c3e50; border-bottom: 1px solid #ddd;">מחכה להרצת אלגוריתם...</div>
+    <div id="cy-flow" class="cy-container"></div>
+</div>
+
+<div id="insight-panel" class="floating-panel">
+    <div class="insight-header">
+        <h4>💡 מידע למבחן</h4>
+        <select id="insightAlgoSelect" class="insight-select" onchange="showInsight(this.value)">
+            <option value="DFS">DFS</option>
+            <option value="BFS">BFS</option>
+            <option value="Dijkstra">Dijkstra</option>
+            <option value="BellmanFord">Bellman-Ford</option>
+            <option value="Prim">האלגוריתם של פרים (MST)</option>
+            <option value="Kruskal">האלגוריתם של קרוסקל (MST)</option>
+            <option value="EdmondsKarp">אדמונדס קארפ (זרימה)</option>
+            <option value="Dinic">דיניץ (זרימה)</option>
+        </select>
+    </div>
+    <div id="insight-content" style="font-size: 13.5px; line-height: 1.5; color: #3e2723;"></div>
+</div>
+
+<div id="results-panel" class="floating-panel">
+    <h3 id="table-title" style="margin: 0 0 10px 0; text-align: center; font-size: 16px;">תוצאות</h3>
+    <table><thead><tr><th>צומת</th><th id="col1-header">d</th><th id="col2-header">π</th></tr></thead><tbody id="algo-table-body"></tbody></table>
+</div>
+
+<div id="ds-panel" class="floating-panel">
+    <h3 id="ds-title" style="margin:0 0 10px 0; font-size:14px; text-align:center;">מבנה נתונים</h3>
+    <div id="ds-visualizer"></div>
+</div>
+
+<div class="legal-notice">* הכלי נבנה כפרויקט לימודי למטרות הדגמה בלבד. התוכנה מסופקת "כפי שהיא" (AS IS), ללא כל אחריות. השימוש על אחריות המשתמש בלבד. ט.ל.ח.</div>
+
+<script>
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    let isRunning = false;
+    
+    // התובנות המורחבות כולל פרים וקרוסקל
+    const algoInsights = {
+        'DFS': { title: 'DFS - סריקה לעומק', complexity: 'O(V + E)', space: 'O(V) מחסנית', useCase: 'זיהוי מעגלים, רכיבים כשירים חזק, מיון טופולוגי.' },
+        'BFS': { title: 'BFS - סריקה לרוחב', complexity: 'O(V + E)', space: 'O(V) תור', useCase: 'מציאת מסלול קצר ביותר (במונחי קשתות) בגרף ללא משקלים.' },
+        'Dijkstra': { title: 'Dijkstra - דייקסטרה', complexity: 'O(E log V)', space: 'O(V)', useCase: 'מסלול קצר בגרף עם משקלים חיוביים. חמדן.' },
+        'BellmanFord': { title: 'Bellman-Ford - בלמן פורד', complexity: 'O(V * E)', space: 'O(V)', useCase: 'זיהוי מעגלים שליליים וטיפול במשקלים שליליים.' },
+        'Prim': { title: 'Prim (פרים) - עפ"מ', complexity: 'O(E log V)', space: 'O(V)', useCase: 'עץ פורש מינימלי. מתחיל מצומת בודד ו"מגדל" את העץ ע"י בחירת הקשת הזולה ביותר שיוצאת ממנו אל צמתים שטרם ביקרנו.' },
+        'Kruskal': { title: 'Kruskal (קרוסקל) - עפ"מ', complexity: 'O(E log E) בגלל המיון', space: 'O(V)', useCase: 'עץ פורש מינימלי. ממיין את כל הקשתות ועובר עליהן. מוסיף קשת רק אם היא לא סוגרת מעגל (בעזרת מבנה נתונים Union-Find).' },
+        'EdmondsKarp': { title: 'Edmonds-Karp', complexity: 'O(V * E²)', space: 'O(V+E)', useCase: 'מציאת זרימה מקסימלית ע"י חיפוש מסלול משפר קצר ביותר בעזרת BFS.' },
+        'Dinic': { title: 'Dinic', complexity: 'O(V² * E)', space: 'O(V+E)', useCase: 'אלגוריתם זרימה יעיל. בונה "גרף רמות" ב-BFS, ודוחף "זרימה חוסמת" ב-DFS.' }
+    };
+
+    function toggleInsight() { 
+        const panel = document.getElementById('insight-panel'); 
+        panel.style.display = (panel.style.display === "block") ? "none" : "block";
+        if(panel.style.display === "block") showInsight(document.getElementById('insightAlgoSelect').value);
+    }
+    
+    function showInsight(algoKey) { 
+        const info = algoInsights[algoKey]; if (!info) return; 
+        document.getElementById('insightAlgoSelect').value = algoKey; 
+        document.getElementById('insight-content').innerHTML = `<b>${info.title}</b><br><br><span class="insight-tag">⏱️ זמן:</span> ${info.complexity}<br><span class="insight-tag">📦 זיכרון:</span> ${info.space}<br><br><span class="insight-tag">🎯 שימוש:</span> ${info.useCase}`; 
+    }
+
+    function updateDS(title, items) {
+        const panel = document.getElementById('ds-panel'); panel.style.display = "block";
+        document.getElementById('ds-title').innerText = title; const vis = document.getElementById('ds-visualizer'); vis.innerHTML = "";
+        items.forEach(i => { const div = document.createElement('div'); div.className = 'ds-item'; div.innerText = i; vis.appendChild(div); });
+    }
+
+    // ==========================================
+    // סביבה 1: מסלולים קצרים (Paths)
+    // ==========================================
+    let cyPaths; let nodeCounterPaths = 6; let selectedNodePaths = null; let algoDataPaths = {};
+
+    function initPathsGraph() {
+        cyPaths = cytoscape({
+            container: document.getElementById('cy-paths'),
+            elements: [ { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } }, { data: { id: 'E' } }, { data: { id: 'F' } },
+                { data: { id: 'ab', source: 'A', target: 'B', weight: 4 } }, { data: { id: 'ad', source: 'A', target: 'D', weight: 2 } }, { data: { id: 'bc', source: 'B', target: 'C', weight: 5 } },
+                { data: { id: 'be', source: 'B', target: 'E', weight: 1 } }, { data: { id: 'de', source: 'D', target: 'E', weight: 8 } }, { data: { id: 'ef', source: 'E', target: 'F', weight: 3 } }, { data: { id: 'cf', source: 'C', target: 'F', weight: 6 } } ],
+            style: [
+                { selector: 'node', style: { 'background-color': '#fff', 'border-width': 2, 'border-color': '#2c3e50', 'label': 'data(id)', 'text-valign': 'center', 'text-halign': 'center', 'font-size': '14px', 'width':'40px', 'height':'40px' } },
+                { selector: '.gray', style: { 'background-color': '#95a5a6', 'color': '#fff' } }, { selector: '.black', style: { 'background-color': '#2c3e50', 'color': '#fff' } },
+                { selector: 'edge', style: { 'width': 3, 'line-color': '#bdc3c7', 'target-arrow-shape': 'triangle', 'label': 'data(weight)', 'color': '#c0392b', 'font-weight': 'bold', 'curve-style': 'bezier', 'font-size': '12px', 'text-background-color': '#fff', 'text-background-opacity': 0.8 } },
+                { selector: '.edge-highlighted', style: { 'line-color': '#2980b9', 'width': 4, 'target-arrow-color': '#2980b9' } }, { selector: '.edge-checking', style: { 'line-color': '#f39c12', 'line-style': 'dashed', 'width': 4 } }
+            ], layout: { name: 'breadthfirst', directed: true, padding: 50 }
+        });
+        updateDropdownPaths();
+        cyPaths.on('tap', function(evt) {
+            if (isRunning) return; resetGraphStatusPaths();
+            if (evt.target === cyPaths) { cyPaths.add({ group: 'nodes', data: { id: String.fromCharCode(65 + nodeCounterPaths++) }, position: evt.position }); updateDropdownPaths(); } 
+            else if (evt.target.isNode()) {
+                if (!selectedNodePaths) { selectedNodePaths = evt.target.addClass('gray'); } 
+                else { let w = prompt("משקל הקשת:", "1"); if (w !== null) { cyPaths.add({ group: 'edges', data: { source: selectedNodePaths.id(), target: evt.target.id(), weight: parseInt(w) } }); } selectedNodePaths.removeClass('gray'); selectedNodePaths = null; }
+            }
+        });
+    }
+
+    function updateDropdownPaths() {
+        const select = document.getElementById('startNodeSelect'); select.innerHTML = '';
+        cyPaths.nodes().forEach(n => { let opt = document.createElement('option'); opt.value = n.id(); opt.innerText = n.id(); select.appendChild(opt); });
+    }
+    function resetGraphStatusPaths() { cyPaths.elements().removeClass('gray black edge-highlighted edge-checking'); cyPaths.nodes().removeStyle('background-color color'); document.getElementById('algo-table-body').innerHTML = ""; document.getElementById('ds-panel').style.display = "none"; document.getElementById('status-paths').innerText = "מצב עריכה"; algoDataPaths = {}; isRunning = false; }
+    function clearBoardPaths() { cyPaths.elements().remove(); nodeCounterPaths = 0; resetGraphStatusPaths(); updateDropdownPaths(); }
+    function updateTablePaths(type) { const tbody = document.getElementById('algo-table-body'); tbody.innerHTML = ""; for (const id in algoDataPaths) { const tr = document.createElement('tr'); let d = algoDataPaths[id].dist; let f = algoDataPaths[id].f; let col1 = (type === 'DFS') ? (algoDataPaths[id].d || "") : (d === Infinity ? '∞' : d); let col2 = (type === 'DFS') ? (f || "...") : (algoDataPaths[id].parent || "-"); tr.innerHTML = `<td>${id}</td><td>${col1}</td><td>${col2}</td>`; tbody.appendChild(tr); } }
+
+    async function runDFS() { showInsight('DFS'); resetGraphStatusPaths(); isRunning = true; document.getElementById('table-title').innerText = "זמני DFS"; document.getElementById('col1-header').innerText = "d"; document.getElementById('col2-header').innerText = "f"; let time = 0; let stack = []; const startId = document.getElementById('startNodeSelect').value; const visited = new Set(); async function visit(uId) { visited.add(uId); let u = cyPaths.getElementById(uId).addClass('gray'); time++; algoDataPaths[uId] = { d: time, parent: "-" }; stack.push(uId); updateDS("מחסנית (Stack)", stack); updateTablePaths('DFS'); await sleep(500); for (let edge of u.outgoers('edge')) { let vId = edge.target().id(); if (!visited.has(vId)) { edge.addClass('edge-highlighted'); await visit(vId); } } time++; algoDataPaths[uId].f = time; u.removeClass('gray').addClass('black'); stack.pop(); updateDS("מחסנית", stack); updateTablePaths('DFS'); await sleep(300); } await visit(startId); isRunning = false; }
+    async function runBFS() { showInsight('BFS'); resetGraphStatusPaths(); isRunning = true; document.getElementById('table-title').innerText = "מרחקי BFS"; document.getElementById('col1-header').innerText = "מרחק"; document.getElementById('col2-header').innerText = "π"; const startId = document.getElementById('startNodeSelect').value; const levelColors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6']; cyPaths.nodes().forEach(n => algoDataPaths[n.id()] = { dist: Infinity, parent: "-" }); algoDataPaths[startId].dist = 0; let queue = [startId]; let visited = new Set([startId]); while (queue.length > 0) { updateDS("תור (Queue)", queue); let uId = queue.shift(); let u = cyPaths.getElementById(uId).addClass('gray'); updateTablePaths('BFS'); await sleep(500); for (let edge of u.outgoers('edge')) { let vId = edge.target().id(); if (!visited.has(vId)) { visited.add(vId); algoDataPaths[vId] = { dist: algoDataPaths[uId].dist + 1, parent: uId }; edge.addClass('edge-highlighted'); queue.push(vId); updateTablePaths('BFS'); await sleep(300); } } u.removeClass('gray').style('background-color', levelColors[algoDataPaths[uId].dist % 6]).style('color', '#fff'); await sleep(200); } isRunning = false; }
+    async function runDijkstra() { showInsight('Dijkstra'); if (cyPaths.edges().some(e => e.data('weight') < 0)) alert("אזהרה: יש משקלים שליליים!"); resetGraphStatusPaths(); isRunning = true; document.getElementById('table-title').innerText = "Dijkstra"; const startId = document.getElementById('startNodeSelect').value; cyPaths.nodes().forEach(n => algoDataPaths[n.id()] = { dist: Infinity, parent: "-" }); algoDataPaths[startId].dist = 0; let pq = cyPaths.nodes().map(n => n.id()); while (pq.length > 0) { pq.sort((a, b) => algoDataPaths[a].dist - algoDataPaths[b].dist); updateDS("תור עדיפויות (PQ)", pq.map(id => `${id}:${algoDataPaths[id].dist === Infinity ? '∞' : algoDataPaths[id].dist}`)); let uId = pq.shift(); if (algoDataPaths[uId].dist === Infinity) break; let u = cyPaths.getElementById(uId).addClass('gray'); await sleep(500); for (let edge of u.outgoers('edge')) { let vId = edge.target().id(); edge.addClass('edge-checking'); await sleep(250); let newDist = algoDataPaths[uId].dist + edge.data('weight'); if (newDist < algoDataPaths[vId].dist) { algoDataPaths[vId].dist = newDist; algoDataPaths[vId].parent = uId; edge.removeClass('edge-checking').addClass('edge-highlighted'); updateTablePaths('Dijkstra'); } else edge.removeClass('edge-checking'); } u.removeClass('gray').addClass('black'); } isRunning = false; }
+    async function runBellmanFord() { showInsight('BellmanFord'); resetGraphStatusPaths(); isRunning = true; document.getElementById('table-title').innerText = "Bellman-Ford"; const startId = document.getElementById('startNodeSelect').value; const nodes = cyPaths.nodes(); const edges = cyPaths.edges(); nodes.forEach(n => algoDataPaths[n.id()] = { dist: Infinity, parent: "-" }); algoDataPaths[startId].dist = 0; updateTablePaths('BFS'); for (let i = 1; i < nodes.length; i++) { document.getElementById('status-paths').innerText = `איטרציה ${i}/${nodes.length - 1}`; for (let edge of edges) { let uId = edge.source().id(); let vId = edge.target().id(); edge.addClass('edge-checking'); await sleep(100); if (algoDataPaths[uId].dist !== Infinity && algoDataPaths[uId].dist + edge.data('weight') < algoDataPaths[vId].dist) { algoDataPaths[vId].dist = algoDataPaths[uId].dist + edge.data('weight'); algoDataPaths[vId].parent = uId; edge.addClass('edge-highlighted'); updateTablePaths('BFS'); await sleep(150); } edge.removeClass('edge-checking'); } } for (let edge of edges) { if (algoDataPaths[edge.source().id()].dist + edge.data('weight') < algoDataPaths[edge.target().id()].dist) { alert("זוהה מעגל שלילי!"); break; } } document.getElementById('status-paths').innerText = "הסתיים"; isRunning = false; }
+
+    // ==========================================
+    // סביבה 2 החדשה: עץ פורש מינימלי (MST)
+    // ==========================================
+    let cyMst; let nodeCounterMst = 1; let selectedNodeMst = null; let isMstInit = false;
+
+    function initMstGraph() {
+        cyMst = cytoscape({
+            container: document.getElementById('cy-mst'),
+            elements: [
+                { data: { id: 'V1' } }, { data: { id: 'V2' } }, { data: { id: 'V3' } }, { data: { id: 'V4' } }, { data: { id: 'V5' } },
+                { data: { id: 'e1', source: 'V1', target: 'V2', weight: 9 } },
+                { data: { id: 'e2', source: 'V1', target: 'V3', weight: 4 } },
+                { data: { id: 'e3', source: 'V2', target: 'V3', weight: 2 } },
+                { data: { id: 'e4', source: 'V2', target: 'V4', weight: 7 } },
+                { data: { id: 'e5', source: 'V3', target: 'V4', weight: 3 } },
+                { data: { id: 'e6', source: 'V3', target: 'V5', weight: 6 } },
+                { data: { id: 'e7', source: 'V4', target: 'V5', weight: 1 } }
+            ],
+            style: [
+                { selector: 'node', style: { 'background-color': '#fff', 'border-width': 2, 'border-color': '#2c3e50', 'label': 'data(id)', 'text-valign': 'center', 'text-halign': 'center', 'font-size': '14px', 'width':'40px', 'height':'40px' } },
+                { selector: '.in-tree', style: { 'background-color': '#2ecc71', 'color': '#fff', 'border-color': '#27ae60' } },
+                { selector: '.gray', style: { 'background-color': '#95a5a6', 'color': '#fff' } },
+                // חשוב מאוד: בגרף הזה אין חצים! (target-arrow-shape: none)
+                { selector: 'edge', style: { 'width': 3, 'line-color': '#bdc3c7', 'target-arrow-shape': 'none', 'label': 'data(weight)', 'color': '#c0392b', 'font-weight': 'bold', 'font-size': '14px', 'text-background-color': '#fff', 'text-background-opacity': 0.8 } },
+                { selector: '.edge-mst', style: { 'line-color': '#2ecc71', 'width': 5 } }, 
+                { selector: '.edge-checking', style: { 'line-color': '#f1c40f', 'line-style': 'dashed', 'width': 4 } },
+                { selector: '.edge-discarded', style: { 'line-color': '#e74c3c', 'opacity': 0.3 } }
+            ], layout: { name: 'breadthfirst', directed: false, padding: 50 }
+        });
+        updateDropdownMst();
+        cyMst.on('tap', function(evt) {
+            if (isRunning) return; resetGraphStatusMst();
+            if (evt.target === cyMst) { cyMst.add({ group: 'nodes', data: { id: 'V' + (nodeCounterMst++ + 5) }, position: evt.position }); updateDropdownMst(); } 
+            else if (evt.target.isNode()) {
+                if (!selectedNodeMst) { selectedNodeMst = evt.target.addClass('gray'); } 
+                else { let w = prompt("משקל הקשת (חיובי):", "1"); if (w !== null && !isNaN(w)) { cyMst.add({ group: 'edges', data: { source: selectedNodeMst.id(), target: evt.target.id(), weight: parseInt(w) } }); } selectedNodeMst.removeClass('gray'); selectedNodeMst = null; }
+            }
+        });
+    }
+
+    function updateDropdownMst() {
+        const select = document.getElementById('startNodeMstSelect'); select.innerHTML = '';
+        cyMst.nodes().forEach(n => { let opt = document.createElement('option'); opt.value = n.id(); opt.innerText = n.id(); select.appendChild(opt); });
+    }
+    
+    function resetGraphStatusMst() { 
+        if(!cyMst) return; 
+        cyMst.elements().removeClass('in-tree gray edge-mst edge-checking edge-discarded'); 
+        document.getElementById('mst-weight-val').innerText = '0'; document.getElementById('ds-panel').style.display = "none"; isRunning = false; 
+    }
+    
+    function clearBoardMst() { cyMst.elements().remove(); nodeCounterMst = 1; resetGraphStatusMst(); updateDropdownMst(); }
+
+    async function runPrim() {
+        showInsight('Prim'); resetGraphStatusMst(); isRunning = true; let totalWeight = 0;
+        const startId = document.getElementById('startNodeMstSelect').value;
+        let inTree = new Set([startId]);
+        cyMst.getElementById(startId).addClass('in-tree');
+        
+        while (inTree.size < cyMst.nodes().length) {
+            let availableEdges = [];
+            // מוצאים את כל הקשתות שיוצאות מהעץ החוצה
+            cyMst.edges().forEach(edge => {
+                let u = edge.source().id(); let v = edge.target().id();
+                if ((inTree.has(u) && !inTree.has(v)) || (inTree.has(v) && !inTree.has(u))) { availableEdges.push(edge); }
+            });
+            
+            if (availableEdges.length === 0) break; // הגרף לא קשיר
+            
+            // מיוצג כתור עדיפויות על המסך
+            availableEdges.sort((a, b) => a.data('weight') - b.data('weight'));
+            updateDS("קשתות אפשריות (לפי משקל)", availableEdges.map(e => `${e.source().id()}-${e.target().id()} (${e.data('weight')})`));
+            
+            let bestEdge = availableEdges[0];
+            bestEdge.addClass('edge-checking'); await sleep(600);
+            
+            bestEdge.removeClass('edge-checking').addClass('edge-mst');
+            totalWeight += bestEdge.data('weight');
+            document.getElementById('mst-weight-val').innerText = totalWeight;
+            
+            let newNode = inTree.has(bestEdge.source().id()) ? bestEdge.target().id() : bestEdge.source().id();
+            inTree.add(newNode);
+            cyMst.getElementById(newNode).addClass('in-tree');
+            await sleep(400);
+        }
+        isRunning = false;
+    }
+
+    async function runKruskal() {
+        showInsight('Kruskal'); resetGraphStatusMst(); isRunning = true; let totalWeight = 0;
+        
+        // מבנה נתונים Union-Find לזיהוי מעגלים
+        class UnionFind {
+            constructor(nodes) { this.parent = {}; nodes.forEach(n => this.parent[n] = n); }
+            find(i) { if (this.parent[i] === i) return i; return this.parent[i] = this.find(this.parent[i]); }
+            union(i, j) { let rootI = this.find(i); let rootJ = this.find(j); if (rootI !== rootJ) { this.parent[rootI] = rootJ; return true; } return false; }
+        }
+        
+        let uf = new UnionFind(cyMst.nodes().map(n => n.id()));
+        let sortedEdges = cyMst.edges().toArray().sort((a, b) => a.data('weight') - b.data('weight'));
+        
+        for (let edge of sortedEdges) {
+            updateDS("קשתות שנשארו (ממוין)", sortedEdges.slice(sortedEdges.indexOf(edge)).map(e => `(${e.data('weight')})`));
+            edge.addClass('edge-checking'); await sleep(500);
+            
+            let u = edge.source().id(); let v = edge.target().id();
+            if (uf.union(u, v)) {
+                edge.removeClass('edge-checking').addClass('edge-mst');
+                cyMst.getElementById(u).addClass('in-tree'); cyMst.getElementById(v).addClass('in-tree');
+                totalWeight += edge.data('weight');
+                document.getElementById('mst-weight-val').innerText = totalWeight;
+                await sleep(300);
+            } else {
+                // סוגר מעגל - נזרוק
+                edge.removeClass('edge-checking').addClass('edge-discarded');
+                await sleep(200);
+            }
+        }
+        isRunning = false;
+    }
+
+    // ==========================================
+    // סביבה 3: רשתות זרימה (Flow)
+    // ==========================================
+    let cyFlow; let flowNodeCounter = 1; let selectedFlowNode = null; let isFlowInit = false; let currentAugmentingPath = null; let currentBottleneck = 0; let dinicLevel = null;
+
+    function initFlowNetwork() {
+        cyFlow = cytoscape({
+            container: document.getElementById('cy-flow'),
+            elements: [ { data: { id: 's' } }, { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } }, { data: { id: 't' } },
+                { data: { id: 'sa', source: 's', target: 'A', capacity: 10, flow: 0 } }, { data: { id: 'sc', source: 's', target: 'C', capacity: 10, flow: 0 } },
+                { data: { id: 'ab', source: 'A', target: 'B', capacity: 4, flow: 0 } }, { data: { id: 'ac', source: 'A', target: 'C', capacity: 2, flow: 0 } },
+                { data: { id: 'ad', source: 'A', target: 'D', capacity: 8, flow: 0 } }, { data: { id: 'cd', source: 'C', target: 'D', capacity: 9, flow: 0 } },
+                { data: { id: 'bt', source: 'B', target: 't', capacity: 10, flow: 0 } }, { data: { id: 'db', source: 'D', target: 'B', capacity: 6, flow: 0 } }, { data: { id: 'dt', source: 'D', target: 't', capacity: 10, flow: 0 } } ],
+            style: [
+                { selector: 'node', style: { 'background-color': '#bdc3c7', 'border-width': 2, 'border-color': '#2c3e50', 'label': 'data(id)', 'color': '#2c3e50', 'text-valign': 'center', 'text-halign': 'center', 'font-size': '16px', 'font-weight': 'bold', 'width': '45px', 'height': '45px' } },
+                { selector: 'node[id="s"]', style: { 'background-color': '#2ecc71', 'color': '#fff', 'border-color': '#27ae60' } }, { selector: 'node[id="t"]', style: { 'background-color': '#e74c3c', 'color': '#fff', 'border-color': '#c0392b' } },
+                { selector: '.selected', style: { 'border-width': 4, 'border-color': '#f1c40f' } }, { selector: '.gray', style: { 'background-color': '#7f8c8d', 'color': '#fff' } },
+                { selector: 'edge', style: { 'width': 3, 'line-color': '#95a5a6', 'target-arrow-color': '#95a5a6', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'label': function(ele){ return ele.data('flow') + '/' + ele.data('capacity'); }, 'font-size': '14px', 'font-weight': 'bold', 'color': '#2c3e50', 'text-background-color': '#fff', 'text-background-opacity': 0.9, 'text-border-color': '#bdc3c7', 'text-border-width': 1 } },
+                { selector: '.edge-highlighted', style: { 'line-color': '#f1c40f', 'target-arrow-color': '#f1c40f', 'width': 5 } }, { selector: '.edge-backward', style: { 'line-color': '#e74c3c', 'target-arrow-color': '#e74c3c', 'line-style': 'dashed', 'width': 4 } }, 
+                { selector: '.edge-checking', style: { 'line-color': '#9b59b6', 'target-arrow-color': '#9b59b6', 'line-style': 'dashed', 'width': 4 } }, { selector: '.edge-saturated', style: { 'line-color': '#c0392b', 'target-arrow-color': '#c0392b', 'width': 4 } }
+            ], layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.5, padding: 50 }
+        });
+        cyFlow.on('tap', function(evt) {
+            if (isRunning) return; cleanFlowColors();
+            if (evt.target === cyFlow) { cyFlow.add({ group: 'nodes', data: { id: 'V' + flowNodeCounter++ }, position: evt.position }); } 
+            else if (evt.target.isNode()) {
+                if (!selectedFlowNode) { selectedFlowNode = evt.target.addClass('selected'); } 
+                else { if (selectedFlowNode.id() !== evt.target.id()) { let cap = prompt("קיבולת (Capacity):", "10"); if (cap !== null && !isNaN(cap) && parseInt(cap) > 0) { cyFlow.add({ group: 'edges', data: { id: selectedFlowNode.id() + evt.target.id(), source: selectedFlowNode.id(), target: evt.target.id(), capacity: parseInt(cap), flow: 0 } }); } } selectedFlowNode.removeClass('selected'); selectedFlowNode = null; }
+            }
+        });
+    }
+
+    function setFlowStatus(text) { document.getElementById('status-flow-text').innerHTML = text; }
+    function cleanFlowColors() { if(!cyFlow) return; cyFlow.nodes().removeStyle('background-color color'); cyFlow.elements().removeClass('edge-highlighted edge-backward edge-checking gray'); }
+
+    async function findAugmentingPathBFS() {
+        if (isRunning) return; isRunning = true; dinicLevel = null; cleanFlowColors(); showInsight('EdmondsKarp'); setFlowStatus("אדמונדס-קארפ: מחפש מסלול בגרף השיורי...");
+        let queue = [{ id: 's', path: [], bottleneck: Infinity }]; let visited = new Set(['s']); let foundPath = null;
+        while (queue.length > 0) {
+            let curr = queue.shift(); let uId = curr.id; let u = cyFlow.getElementById(uId);
+            if (uId === 't') { foundPath = curr; break; }
+            u.addClass('gray'); await sleep(150);
+            let edges = u.connectedEdges();
+            for (let edge of edges) {
+                let sourceId = edge.source().id(); let targetId = edge.target().id(); let vId, resCap, isForward;
+                if (sourceId === uId) { vId = targetId; resCap = edge.data('capacity') - edge.data('flow'); isForward = true; } else { vId = sourceId; resCap = edge.data('flow'); isForward = false; }
+                if (resCap > 0 && !visited.has(vId)) { visited.add(vId); queue.push({ id: vId, path: [...curr.path, { edge: edge, isForward: isForward, resCap: resCap }], bottleneck: Math.min(curr.bottleneck, resCap) }); }
+            }
+            u.removeClass('gray');
+        }
+        if (foundPath) { currentAugmentingPath = foundPath.path; currentBottleneck = foundPath.bottleneck; setFlowStatus(`נמצא מסלול! צוואר בקבוק: <strong style="color:#e74c3c;">${currentBottleneck}</strong>`); for (let step of currentAugmentingPath) { step.edge.addClass(step.isForward ? 'edge-highlighted' : 'edge-backward'); await sleep(150); } } else { setFlowStatus("לא נמצאו מסלולים. הגענו לזרימה מקסימלית!"); currentAugmentingPath = null; currentBottleneck = 0; }
+        isRunning = false;
+    }
+
+    async function pushFlow() {
+        if (isRunning) return; if (!currentAugmentingPath) { alert("קודם צריך לחפש מסלול!"); return; } isRunning = true; setFlowStatus("מעדכן זרימה...");
+        for (let step of currentAugmentingPath) {
+            let edge = step.edge; let currentFlow = edge.data('flow');
+            if (step.isForward) { edge.data('flow', currentFlow + currentBottleneck); } else { edge.data('flow', currentFlow - currentBottleneck); }
+            edge.removeClass('edge-highlighted edge-backward').addClass('edge-checking'); await sleep(200); edge.removeClass('edge-checking');
+            if (edge.data('flow') === edge.data('capacity')) edge.addClass('edge-saturated'); else edge.removeClass('edge-saturated');
+        }
+        let maxFlowEl = document.getElementById('max-flow-val'); maxFlowEl.innerText = parseInt(maxFlowEl.innerText) + currentBottleneck;
+        cleanFlowColors(); currentAugmentingPath = null; currentBottleneck = 0; setFlowStatus("זרימה עודכנה! חפש מסלול חדש."); isRunning = false;
+    }
+
+    async function buildDinicLevelGraph() {
+        if (isRunning) return; isRunning = true; currentAugmentingPath = null; cleanFlowColors(); showInsight('Dinic');
+        const levelColors = ['#2ecc71', '#3498db', '#f1c40f', '#e67e22', '#9b59b6', '#1abc9c'];
+        dinicLevel = {}; cyFlow.nodes().forEach(n => dinicLevel[n.id()] = -1); dinicLevel['s'] = 0; let q = ['s'];
+        setFlowStatus("<span style='color:#9b59b6;'>דיניץ (1): בונה גרף רמות ב-BFS...</span>");
+        while (q.length > 0) {
+            let uId = q.shift(); let u = cyFlow.getElementById(uId); u.addClass('gray'); await sleep(100);
+            let edges = u.connectedEdges();
+            for (let edge of edges) {
+                let isForward = edge.source().id() === uId; let vId = isForward ? edge.target().id() : edge.source().id(); let resCap = isForward ? edge.data('capacity') - edge.data('flow') : edge.data('flow');
+                if (resCap > 0 && dinicLevel[vId] === -1) { 
+                    dinicLevel[vId] = dinicLevel[uId] + 1; q.push(vId); 
+                    if (vId !== 't') cyFlow.getElementById(vId).style({ 'background-color': levelColors[dinicLevel[vId] % levelColors.length], 'color': '#fff' });
+                    edge.addClass('edge-checking'); await sleep(70); edge.removeClass('edge-checking');
+                }
+            }
+            u.removeClass('gray');
+        }
+        if (dinicLevel['t'] === -1) { setFlowStatus("<strong style='color:#2ecc71;'>זרימה מקסימלית הושגה!</strong>"); dinicLevel = null; } 
+        else { setFlowStatus(`<span style='color:#9b59b6;'>גרף רמות מוכן (מרחק ${dinicLevel['t']}). לחץ "זרימה חוסמת".</span>`); }
+        isRunning = false;
+    }
+
+    async function pushDinicBlockingFlow() {
+        if (isRunning) return; if (!dinicLevel) { alert("לחץ קודם על בנה רמות!"); return; } isRunning = true; setFlowStatus("<span style='color:#8e44ad;'>דיניץ (2): דוחף זרימה ב-DFS...</span>");
+        let totalPushed = 0;
+        async function dfs(uId, flowIn) {
+            if (uId === 't') return flowIn;
+            let u = cyFlow.getElementById(uId); let edges = u.connectedEdges(); let pushed = 0;
+            for (let edge of edges) {
+                let isForward = edge.source().id() === uId; let vId = isForward ? edge.target().id() : edge.source().id(); let resCap = isForward ? edge.data('capacity') - edge.data('flow') : edge.data('flow');
+                if (resCap > 0 && dinicLevel[vId] === dinicLevel[uId] + 1) {
+                    edge.addClass('edge-checking'); await sleep(70);
+                    let trushFlow = await dfs(vId, Math.min(flowIn - pushed, resCap));
+                    if (trushFlow > 0) {
+                        if (isForward) edge.data('flow', edge.data('flow') + trushFlow); else edge.data('flow', edge.data('flow') - trushFlow);
+                        if (edge.data('flow') === edge.data('capacity')) edge.addClass('edge-saturated'); else edge.removeClass('edge-saturated');
+                        edge.removeClass('edge-checking').addClass(isForward ? 'edge-highlighted' : 'edge-backward'); await sleep(100); edge.removeClass('edge-highlighted edge-backward');
+                        pushed += trushFlow; if (pushed === flowIn) break;
+                    } else { edge.removeClass('edge-checking'); }
+                }
+            }
+            return pushed;
+        }
+        while(true) { let pushedNow = await dfs('s', Infinity); if(pushedNow === 0) break; totalPushed += pushedNow; }
+        let maxFlowEl = document.getElementById('max-flow-val'); maxFlowEl.innerText = parseInt(maxFlowEl.innerText) + totalPushed;
+        setFlowStatus(`<span style='color:#8e44ad;'>נדחפה זרימה של ${totalPushed}. <b>חזור לשלב 1.</b></span>`); dinicLevel = null; cyFlow.nodes().removeStyle('background-color color'); isRunning = false;
+    }
+
+    async function runDinicAuto() { if (isRunning) return; await buildDinicLevelGraph(); if (!dinicLevel) return; let waitCheck = setInterval(async () => { if (!isRunning) { clearInterval(waitCheck); await pushDinicBlockingFlow(); if (dinicLevel === null && document.getElementById('status-flow-text').innerText.includes('חזור לשלב 1')) { setTimeout(runDinicAuto, 500); } } }, 100); }
+    function resetFlowGraph() { if(!cyFlow) return; cleanFlowColors(); cyFlow.elements().removeClass('edge-saturated'); cyFlow.edges().forEach(edge => edge.data('flow', 0)); document.getElementById('max-flow-val').innerText = '0'; setFlowStatus("מצב עריכה"); currentAugmentingPath = null; dinicLevel = null; }
+    function clearFlowBoard() { if(!cyFlow) return; cyFlow.elements().remove(); cyFlow.add([ { group: 'nodes', data: { id: 's' } }, { group: 'nodes', data: { id: 't' } } ]); flowNodeCounter = 1; document.getElementById('max-flow-val').innerText = '0'; setFlowStatus("לוח נוקה"); currentAugmentingPath = null; dinicLevel = null; }
+
+    // ==========================================
+    // ניווט טאבים
+    // ==========================================
+    function switchWorkspace(mode) {
+        if(isRunning) return;
+        document.getElementById('tab-paths').classList.toggle('active', mode === 'paths');
+        document.getElementById('tab-mst').classList.toggle('active', mode === 'mst');
+        document.getElementById('tab-flow').classList.toggle('active', mode === 'flow');
+        
+        document.getElementById('results-panel').style.display = mode === 'paths' ? 'block' : 'none';
+        document.getElementById('ds-panel').style.display = 'none';
+        
+        ['paths', 'mst', 'flow'].forEach(m => {
+            if (m === mode) { document.getElementById('workspace-' + m).classList.add('active'); } 
+            else { document.getElementById('workspace-' + m).classList.remove('active'); }
+        });
+
+        if (mode === 'paths' && !cyPaths) initPathsGraph();
+        if (mode === 'mst' && !isMstInit) { initMstGraph(); isMstInit = true; }
+        if (mode === 'flow' && !isFlowInit) { initFlowNetwork(); isFlowInit = true; }
+    }
+
+    window.onload = () => { initPathsGraph(); };
+</script>
+
+</body>
+</html>
