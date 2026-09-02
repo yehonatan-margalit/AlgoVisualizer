@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="כלי אינטראקטיבי להמחשת אלגוריתמים על גרפים — DFS, BFS, Dijkstra, Bellman-Ford, Prim, Kruskal, Edmonds-Karp, Dinic">
+    <title>AlgoVisualizer — המעבדה לאלגוריתמים | Yehonatan's Edition</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    
+    <style>
+        /* ============================================
+           CSS Custom Properties — Design Tokens
+           ============================================ */
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-glass: rgba(255, 255, 255, 0.04);
+            --bg-glass-hover: rgba(255, 255, 255, 0.08);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(255, 255, 255, 0.12);
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+
+            --accent-emerald: #10b981;
+            --accent-emerald-glow: rgba(16, 185, 129, 0.4);
+            --accent-blue: #3b82f6;
+            --accent-blue-glow: rgba(59, 130, 246, 0.4);
+            --accent-purple: #8b5cf6;
+            --accent-purple-glow: rgba(139, 92, 246, 0.4);
+            --accent-amber: #f59e0b;
+            --accent-amber-glow: rgba(245, 158, 11, 0.4);
+            --accent-rose: #f43f5e;
+            --accent-rose-glow: rgba(244, 63, 94, 0.4);
+            --accent-cyan: #06b6d4;
+            --accent-cyan-glow: rgba(6, 182, 212, 0.4);
+            --accent-orange: #f97316;
+            --accent-orange-glow: rgba(249, 115, 22, 0.4);
+
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-pill: 50px;
+            --blur-amount: 20px;
+
+            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ============================================
+           Reset & Base
+           ============================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse 80% 50% at 20% 40%, rgba(59, 130, 246, 0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 60%, rgba(139, 92, 246, 0.05) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 50% at 50% 90%, rgba(16, 185, 129, 0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: bgShift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgShift {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        /* ============================================
+           Tab Bar
+           ============================================ */
+        .tab-bar {
+            position: relative; z-index: 20;
+            display: flex; justify-content: center; align-items: center; gap: 4px;
+            padding: 12px 20px;
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(var(--blur-amount));
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        .tab-btn {
+            position: relative; background: transparent; color: var(--text-secondary);
+            border: none; padding: 10px 24px;
+            font-family: var(--font-family); font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: var(--transition-smooth);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0; letter-spacing: 0.2px;
+        }
+        .tab-btn::after {
+            content: ''; position: absolute; bottom: -1px; left: 50%;
+            transform: translateX(-50%) scaleX(0); width: 80%; height: 2px;
+            border-radius: 2px; background: linear-gradient(90deg, var(--accent-amber), var(--accent-orange));
+            transition: transform var(--transition-smooth);
+        }
+        .tab-btn:hover { color: var(--text-primary); background: var(--bg-glass-hover); }
+        .tab-btn:hover::after { transform: translateX(-50%) scaleX(0.5); }
+        .tab-btn.active { color: var(--text-primary); background: var(--bg-glass); }
+        .tab-btn.active::after { transform: translateX(-50%) scaleX(1); box-shadow: 0 0 12px var(--accent-amber-glow); }
+        .tab-icon { margin-left: 6px; font-size: 16px; }
+
+        /* ============================================
+           Workspace
+           ============================================ */
+        .workspace { display: none; flex-direction: column; flex-grow: 1; position: relative; z-index: 1; }
+        .workspace.active { display: flex; animation: fadeIn 0.4s ease-out; }
+
+        /* ============================================
+           Controls
+           ============================================ */
+        .controls {
+            position: relative; z-index: 10;
+            padding: 14px 20px; display: flex; align-items: center; justify-content: center;
+            gap: 10px; flex-wrap: wrap;
+            background: var(--bg-glass); backdrop-filter: blur(var(--blur-amount));
+            border-bottom: 1px solid var(--border-glass);
+        }
+        .instructions {
+            position: relative; z-index: 9; text-align: center;
+            padding: 8px 16px; font-size: 13px; font-weight: 500;
+            color: var(--text-secondary); background: rgba(17, 24, 39, 0.5);
+            backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-glass);
+        }
+        .instructions strong { color: var(--accent-amber); }
+
+        /* ============================================
+           Buttons
+           ============================================ */
+        button, select { font-family: var(--font-family); font-size: 13px; font-weight: 600; cursor: pointer; border: none; outline: none; transition: var(--transition-fast); }
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: var(--radius-pill);
+            font-weight: 600; font-size: 13px; letter-spacing: 0.3px;
+            border: 1px solid transparent; position: relative; overflow: hidden;
+        }
+        .btn::before {
+            content: ''; position: absolute; inset: 0; border-radius: inherit;
+            opacity: 0; transition: opacity var(--transition-fast);
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+        }
+        .btn:hover::before { opacity: 1; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-dfs { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-dfs:hover { box-shadow: 0 4px 20px var(--accent-emerald-glow); }
+        .btn-bfs { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+        .btn-bfs:hover { box-shadow: 0 4px 20px var(--accent-purple-glow); }
+        .btn-dijkstra { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .btn-dijkstra:hover { box-shadow: 0 4px 20px var(--accent-blue-glow); }
+        .btn-bellman { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
+        .btn-bellman:hover { box-shadow: 0 4px 20px var(--accent-orange-glow); }
+        .btn-insight { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e; }
+        .btn-insight:hover { box-shadow: 0 4px 20px var(--accent-amber-glow); }
+        .btn-reset { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; margin-right: auto; }
+        .btn-reset:hover { box-shadow: 0 4px 20px var(--accent-amber-glow); }
+        .btn-clear { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; }
+        .btn-clear:hover { box-shadow: 0 4px 20px var(--accent-rose-glow); }
+        .btn-flow-action { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .btn-flow-action:hover { box-shadow: 0 4px 20px var(--accent-blue-glow); }
+        .btn-flow-push { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-flow-push:hover { box-shadow: 0 4px 20px var(--accent-emerald-glow); }
+        .btn-flow-dinic { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+        .btn-flow-dinic:hover { box-shadow: 0 4px 20px var(--accent-purple-glow); }
+        .btn-flow-dinic.step2 { background: linear-gradient(135deg, #a855f7, #9333ea); }
+        .btn-flow-dinic.auto { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .btn-flow-dinic.auto:hover { box-shadow: 0 4px 20px var(--accent-orange-glow); }
+        .btn-mst-prim { background: linear-gradient(135deg, #14b8a6, #0d9488); color: white; }
+        .btn-mst-prim:hover { box-shadow: 0 4px 20px rgba(20, 184, 166, 0.4); }
+        .btn-mst-kruskal { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .btn-mst-kruskal:hover { box-shadow: 0 4px 20px var(--accent-blue-glow); }
+        .btn-compare { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; }
+        .btn-compare:hover { box-shadow: 0 4px 20px var(--accent-cyan-glow); }
+        .btn-preset { background: linear-gradient(135deg, #64748b, #475569); color: white; }
+        .btn-preset:hover { box-shadow: 0 4px 20px rgba(100,116,139,0.4); }
+        .btn-export { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; }
+        .btn-export:hover { box-shadow: 0 4px 20px rgba(14,165,233,0.4); }
+        .btn-import { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+        .btn-import:hover { box-shadow: 0 4px 20px var(--accent-purple-glow); }
+        .btn-pseudo { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; }
+        .btn-pseudo:hover { box-shadow: 0 4px 20px var(--accent-cyan-glow); }
+
+        /* ============================================
+           Select
+           ============================================ */
+        select {
+            padding: 8px 14px; border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.06); color: var(--text-primary);
+            border: 1px solid var(--border-glow); backdrop-filter: blur(10px);
+            font-size: 13px; font-weight: 500;
+        }
+        select:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-blue-glow); }
+        select option { background: var(--bg-secondary); color: var(--text-primary); }
+        .controls label { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+
+        /* ============================================
+           Speed Slider
+           ============================================ */
+        .speed-control {
+            display: flex; align-items: center; gap: 8px;
+            padding: 4px 14px; border-radius: var(--radius-pill);
+            background: rgba(255,255,255,0.04); border: 1px solid var(--border-glow);
+        }
+        .speed-control label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+        .speed-control input[type="range"] {
+            -webkit-appearance: none; width: 80px; height: 4px;
+            background: linear-gradient(90deg, var(--accent-emerald), var(--accent-amber), var(--accent-rose));
+            border-radius: 2px; outline: none; cursor: pointer;
+        }
+        .speed-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            border-radius: 50%; background: white;
+            box-shadow: 0 0 6px rgba(0,0,0,0.4); cursor: pointer;
+        }
+        .speed-control input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px; border-radius: 50%; background: white;
+            box-shadow: 0 0 6px rgba(0,0,0,0.4); cursor: pointer; border: none;
+        }
+        .speed-label { font-size: 11px; color: var(--accent-amber); font-weight: 700; min-width: 32px; text-align: center; }
+
+        /* ============================================
+           Status
+           ============================================ */
+        .status-box {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 16px; border-radius: var(--radius-pill);
+            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glow);
+            font-size: 13px; color: var(--text-secondary); margin-right: auto;
+        }
+        .status-box strong { color: var(--accent-emerald); }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald-glow);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.85); } }
+
+        /* ============================================
+           Graph Canvas
+           ============================================ */
+        .cy-container { flex-grow: 1; width: 100%; background: var(--bg-primary); cursor: crosshair; position: relative; }
+        .cy-container::before {
+            content: ''; position: absolute; inset: 0;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 30px 30px; pointer-events: none; z-index: 0;
+        }
+
+        /* ============================================
+           Floating Panels
+           ============================================ */
+        .floating-panel {
+            position: absolute;
+            background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(24px);
+            padding: 16px; border-radius: var(--radius-lg);
+            border: 1px solid var(--border-glow);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            z-index: 15; transition: var(--transition-smooth);
+        }
+        .floating-panel h3, .floating-panel h4 { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+
+        #results-panel { top: 180px; right: 20px; min-width: 200px; max-height: 45vh; overflow-y: auto; }
+        #results-panel::-webkit-scrollbar { width: 4px; }
+        #results-panel::-webkit-scrollbar-track { background: transparent; }
+        #results-panel::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+
+        #insight-panel { top: 180px; left: 20px; width: 280px; display: none; border-left: 3px solid var(--accent-amber); }
+        #ds-panel { bottom: 30px; right: 20px; min-width: 220px; max-width: 340px; display: none; }
+
+        /* ============================================
+           Table
+           ============================================ */
+        table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 10px; font-size: 13px; }
+        th { padding: 8px 6px; color: var(--accent-blue); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(59, 130, 246, 0.2); }
+        td { padding: 7px 6px; border-bottom: 1px solid var(--border-glass); color: var(--text-secondary); font-weight: 500; font-variant-numeric: tabular-nums; }
+        tr:hover td { background: rgba(255, 255, 255, 0.03); color: var(--text-primary); }
+
+        /* ============================================
+           DS Visualizer
+           ============================================ */
+        #ds-visualizer {
+            display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;
+            min-height: 40px; padding: 12px;
+            background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm);
+            border: 1px dashed var(--border-glow);
+        }
+        .ds-item {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white; padding: 4px 10px; font-weight: 700;
+            border-radius: var(--radius-sm); font-size: 11px;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); animation: dsItemIn 0.3s ease-out;
+        }
+        @keyframes dsItemIn { from { opacity: 0; transform: scale(0.8) translateY(4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* ============================================
+           Insight Panel
+           ============================================ */
+        .insight-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(245, 158, 11, 0.2); padding-bottom: 10px; }
+        .insight-header h4 { font-size: 15px; }
+        .insight-select {
+            padding: 5px 10px; font-size: 12px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glow); background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary); font-weight: 600; font-family: var(--font-family);
+        }
+        .insight-select option { background: var(--bg-secondary); color: var(--text-primary); }
+        .insight-tag { font-weight: 700; color: var(--accent-amber); }
+        #insight-content { font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+
+        /* ============================================
+           Flow Controls
+           ============================================ */
+        .flow-controls-row { display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: wrap; }
+        .flow-separator { width: 1px; height: 24px; background: var(--border-glow); margin: 0 4px; }
+        .flow-label { font-weight: 700; font-size: 13px; }
+        .flow-status-bar {
+            position: relative; z-index: 8; text-align: center;
+            padding: 8px 16px; font-weight: 600; font-size: 13px;
+            color: var(--text-secondary); background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-glass);
+        }
+        .mst-weight-badge, .flow-value-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 16px; border-radius: var(--radius-pill);
+            background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);
+            font-size: 13px; color: var(--text-secondary);
+        }
+        .mst-weight-badge strong, .flow-value-badge strong { color: var(--accent-emerald); font-size: 16px; }
+
+        /* ============================================
+           Toast Notifications
+           ============================================ */
+        #toast-container {
+            position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 20px; border-radius: var(--radius-md);
+            background: rgba(17, 24, 39, 0.92); backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glow);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            font-size: 14px; font-weight: 600; color: var(--text-primary);
+            animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 420px;
+        }
+        .toast.toast-out { animation: toastOut 0.3s ease-in forwards; }
+        .toast-icon { font-size: 18px; flex-shrink: 0; }
+        .toast.success { border-color: rgba(16, 185, 129, 0.3); }
+        .toast.success .toast-icon { color: var(--accent-emerald); }
+        .toast.warning { border-color: rgba(245, 158, 11, 0.3); }
+        .toast.warning .toast-icon { color: var(--accent-amber); }
+        .toast.error { border-color: rgba(244, 63, 94, 0.3); }
+        .toast.error .toast-icon { color: var(--accent-rose); }
+        .toast.info { border-color: rgba(59, 130, 246, 0.3); }
+        .toast.info .toast-icon { color: var(--accent-blue); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-20px) scale(0.95); } }
+
+        /* ============================================
+           Custom Modal
+           ============================================ */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px); z-index: 9998;
+            display: none; justify-content: center; align-items: center;
+            animation: fadeIn 0.2s ease-out;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(24px);
+            border: 1px solid var(--border-glow); border-radius: var(--radius-lg);
+            padding: 28px; min-width: 340px; max-width: 420px;
+            box-shadow: 0 16px 64px rgba(0,0,0,0.6);
+            animation: modalIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--text-primary); }
+        .modal-input {
+            width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
+            background: rgba(255,255,255,0.06); border: 1px solid var(--border-glow);
+            color: var(--text-primary); font-family: var(--font-family); font-size: 15px;
+            font-weight: 600; outline: none; transition: var(--transition-fast);
+        }
+        .modal-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px var(--accent-blue-glow); }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+        .modal-btn {
+            padding: 8px 20px; border-radius: var(--radius-pill); border: none;
+            font-family: var(--font-family); font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: var(--transition-fast);
+        }
+        .modal-btn-primary { background: linear-gradient(135deg, var(--accent-blue), #2563eb); color: white; }
+        .modal-btn-primary:hover { box-shadow: 0 4px 15px var(--accent-blue-glow); transform: translateY(-1px); }
+        .modal-btn-cancel { background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+        .modal-btn-cancel:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+        /* ============================================
+           Context Menu
+           ============================================ */
+        .ctx-menu {
+            position: fixed; z-index: 9997; display: none;
+            background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(24px);
+            border: 1px solid var(--border-glow); border-radius: var(--radius-md);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5); min-width: 180px;
+            padding: 6px 0; animation: ctxIn 0.15s ease-out;
+        }
+        .ctx-menu.show { display: block; }
+        @keyframes ctxIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .ctx-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 500;
+            color: var(--text-secondary); transition: var(--transition-fast);
+        }
+        .ctx-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+        .ctx-item.danger:hover { background: rgba(244, 63, 94, 0.1); color: var(--accent-rose); }
+        .ctx-sep { height: 1px; background: var(--border-glass); margin: 4px 0; }
+
+        /* ============================================
+           Pseudocode Panel
+           ============================================ */
+        #pseudo-panel {
+            position: absolute; top: 180px; left: 20px; width: 300px;
+            max-height: 55vh; overflow-y: auto; display: none;
+            border-left: 3px solid var(--accent-cyan);
+        }
+        #pseudo-panel::-webkit-scrollbar { width: 4px; }
+        #pseudo-panel::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+        .pseudo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(6, 182, 212, 0.2); padding-bottom: 8px; }
+        .pseudo-line {
+            font-family: var(--font-mono); font-size: 12px; line-height: 1.8;
+            padding: 2px 8px; border-radius: 4px; color: var(--text-muted);
+            transition: all 0.2s ease; white-space: pre;
+        }
+        .pseudo-line.active {
+            background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan);
+            font-weight: 600; border-right: 3px solid var(--accent-cyan);
+        }
+        .pseudo-line.done { color: var(--text-secondary); }
+
+        /* ============================================
+           Color Legend
+           ============================================ */
+        #legend-panel {
+            position: absolute; bottom: 20px; left: 20px;
+            display: none; min-width: 180px;
+        }
+        .legend-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 0; font-size: 12px; color: var(--text-secondary);
+        }
+        .legend-dot {
+            width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+        }
+
+        /* ============================================
+           Comparison Panel
+           ============================================ */
+        #compare-panel {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px; max-height: 70vh; overflow-y: auto;
+            display: none; z-index: 20;
+        }
+        #compare-panel table { font-size: 12px; }
+        #compare-panel th { font-size: 11px; }
+
+        /* ============================================
+           Preset Dropdown
+           ============================================ */
+        .preset-dropdown {
+            position: absolute; z-index: 100; display: none;
+            background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(24px);
+            border: 1px solid var(--border-glow); border-radius: var(--radius-md);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5); min-width: 200px; padding: 6px 0;
+        }
+        .preset-dropdown.show { display: block; }
+        .preset-item {
+            padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 500;
+            color: var(--text-secondary); transition: var(--transition-fast);
+        }
+        .preset-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+        .preset-item small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ============================================
+           Footer
+           ============================================ */
+        .legal-notice {
+            text-align: center; font-size: 11px; color: var(--text-muted);
+            padding: 8px 16px; background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(10px); border-top: 1px solid var(--border-glass);
+        }
+
+        /* ============================================
+           Animations
+           ============================================ */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ============================================
+           Responsive
+           ============================================ */
+        @media (max-width: 768px) {
+            .tab-btn { padding: 8px 14px; font-size: 12px; }
+            .controls { padding: 10px 12px; gap: 8px; }
+            .btn { padding: 6px 12px; font-size: 12px; }
+            .floating-panel { display: none !important; }
+            #pseudo-panel, #legend-panel, #compare-panel { display: none !important; }
+        }
+
+        /* hidden file input */
+        #import-file-input { display: none; }
+    </style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Custom Modal -->
+<div id="modal-overlay" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-title" id="modal-title">הזן ערך</div>
+        <input type="text" class="modal-input" id="modal-input" autocomplete="off">
+        <div class="modal-buttons">
+            <button class="modal-btn modal-btn-cancel" id="modal-cancel">ביטול</button>
+            <button class="modal-btn modal-btn-primary" id="modal-confirm">אישור</button>
+        </div>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div id="ctx-menu" class="ctx-menu">
+    <div class="ctx-item" id="ctx-edit" onclick="ctxEdit()">✏️ ערוך משקל</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item danger" id="ctx-delete" onclick="ctxDelete()">🗑️ מחק</div>
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="import-file-input" accept=".json">
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+    <button id="tab-paths" class="tab-btn active" onclick="switchWorkspace('paths')">
+        <span class="tab-icon">🔀</span> מסלולים קצרים
+    </button>
+    <button id="tab-mst" class="tab-btn" onclick="switchWorkspace('mst')">
+        <span class="tab-icon">🌳</span> עץ פורש מינימלי
+    </button>
+    <button id="tab-flow" class="tab-btn" onclick="switchWorkspace('flow')">
+        <span class="tab-icon">🌊</span> רשתות זרימה
+    </button>
+</div>
+
+<!-- ============================================
+     Workspace 1: Shortest Paths
+     ============================================ -->
+<div id="workspace-paths" class="workspace active">
+    <div class="controls">
+        <label for="startNodeSelect">🏁 התחלה:</label>
+        <select id="startNodeSelect"></select>
+        <button class="btn btn-dfs" onclick="runDFS()">DFS</button>
+        <button class="btn btn-bfs" onclick="runBFS()">BFS</button>
+        <button class="btn btn-dijkstra" onclick="runDijkstra()">Dijkstra</button>
+        <button class="btn btn-bellman" onclick="runBellmanFord()">Bellman-Ford</button>
+        <button class="btn btn-compare" onclick="openCompare()">📊 השוואה</button>
+        <button class="btn btn-pseudo" onclick="togglePseudo()">📋 קוד</button>
+        <button class="btn btn-insight" onclick="toggleInsight()">💡 תובנות</button>
+        <div class="speed-control">
+            <label>🏎️</label>
+            <input type="range" min="1" max="4" value="2" id="speed-slider" oninput="updateSpeed(this.value)">
+            <span class="speed-label" id="speed-label">×1</span>
+        </div>
+        <button class="btn btn-reset" onclick="resetGraphStatusPaths()">⟲ איפוס</button>
+        <button class="btn btn-clear" onclick="clearBoardPaths()">✕ נקה</button>
+        <button class="btn btn-preset" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);" onclick="generateRandomGraph('paths')">🎲 גרף אקראי</button>
+        <div style="position:relative;display:inline-block;">
+            <button class="btn btn-preset" onclick="togglePresetMenu('paths')">📁 גרפים</button>
+            <div id="preset-menu-paths" class="preset-dropdown"></div>
+        </div>
+        <button class="btn btn-export" onclick="exportGraph('paths')">💾</button>
+        <button class="btn btn-import" onclick="importGraph('paths')">📂</button>
+        <div class="status-box">
+            <span class="status-dot"></span>
+            <span id="status-paths">מצב עריכה</span>
+        </div>
+    </div>
+    <div class="instructions">לחץ על הרקע להוספת צומת · לחץ על שני צמתים למתיחת קשת · קליק ימני למחיקה/עריכה · <strong>גרף מכוון (Directed)</strong></div>
+    <div id="cy-paths" class="cy-container"></div>
+</div>
+
+<!-- ============================================
+     Workspace 2: MST
+     ============================================ -->
+<div id="workspace-mst" class="workspace">
+    <div class="controls">
+        <label for="startNodeMstSelect">🏁 התחלה (פרים):</label>
+        <select id="startNodeMstSelect"></select>
+        <button class="btn btn-mst-prim" onclick="runPrim()">⚡ Prim</button>
+        <button class="btn btn-mst-kruskal" onclick="runKruskal()">⚡ Kruskal</button>
+        <button class="btn btn-pseudo" onclick="togglePseudo()">📋 קוד</button>
+        <button class="btn btn-insight" onclick="toggleInsight()">💡 תובנות</button>
+        <div class="speed-control">
+            <label>🏎️</label>
+            <input type="range" min="1" max="4" value="2" class="speed-slider-sync" oninput="updateSpeed(this.value)">
+            <span class="speed-label speed-label-sync">×1</span>
+        </div>
+        <button class="btn btn-reset" onclick="resetGraphStatusMst()">⟲ איפוס</button>
+        <button class="btn btn-clear" onclick="clearBoardMst()">✕ נקה</button>
+        <button class="btn btn-preset" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);" onclick="generateRandomGraph('mst')">🎲 גרף אקראי</button>
+        <div style="position:relative;display:inline-block;">
+            <button class="btn btn-preset" onclick="togglePresetMenu('mst')">📁 גרפים</button>
+            <div id="preset-menu-mst" class="preset-dropdown"></div>
+        </div>
+        <button class="btn btn-export" onclick="exportGraph('mst')">💾</button>
+        <button class="btn btn-import" onclick="importGraph('mst')">📂</button>
+        <div class="mst-weight-badge">
+            <span class="status-dot"></span>
+            משקל עפ״מ: <strong id="mst-weight-val">0</strong>
+        </div>
+    </div>
+    <div class="instructions">הקשתות כאן הן <strong>דו-כיווניות (לא מכוונות)</strong> · לחץ על הרקע להוספת צומת · קליק ימני למחיקה/עריכה</div>
+    <div id="cy-mst" class="cy-container"></div>
+</div>
+
+<!-- ============================================
+     Workspace 3: Flow
+     ============================================ -->
+<div id="workspace-flow" class="workspace">
+    <div class="controls" style="align-items: start; flex-direction: column; gap: 10px;">
+        <div class="flow-controls-row">
+            <span class="flow-label" style="color: var(--accent-amber);">אדמונדס-קארפ:</span>
+            <button class="btn btn-flow-action" onclick="findAugmentingPathBFS()">🔍 חיפוש מסלול</button>
+            <button class="btn btn-flow-push" onclick="pushFlow()">➡ דחיפת זרימה</button>
+            <div class="flow-separator"></div>
+            <span class="flow-label" style="color: var(--accent-purple);">דיניץ:</span>
+            <button class="btn btn-flow-dinic" onclick="buildDinicLevelGraph()">① בנה רמות</button>
+            <button class="btn btn-flow-dinic step2" onclick="pushDinicBlockingFlow()">② זרימה חוסמת</button>
+            <button class="btn btn-flow-dinic auto" onclick="runDinicAuto()">⚡ אוטומטי</button>
+        </div>
+        <div class="flow-controls-row">
+            <button class="btn btn-pseudo" onclick="togglePseudo()">📋 קוד</button>
+            <button class="btn btn-insight" onclick="toggleInsight()">💡 תובנות</button>
+            <div class="speed-control">
+                <label>🏎️</label>
+                <input type="range" min="1" max="4" value="2" class="speed-slider-sync" oninput="updateSpeed(this.value)">
+                <span class="speed-label speed-label-sync">×1</span>
+            </div>
+            <button class="btn btn-reset" onclick="resetFlowGraph()">⟲ איפוס</button>
+            <button class="btn btn-clear" onclick="clearFlowBoard()">✕ נקה</button>
+            <button class="btn btn-preset" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);" onclick="generateRandomGraph('flow')">🎲 גרף אקראי</button>
+            <div style="position:relative;display:inline-block;">
+                <button class="btn btn-preset" onclick="togglePresetMenu('flow')">📁 גרפים</button>
+                <div id="preset-menu-flow" class="preset-dropdown"></div>
+            </div>
+            <button class="btn btn-export" onclick="exportGraph('flow')">💾</button>
+            <button class="btn btn-import" onclick="importGraph('flow')">📂</button>
+            <div class="flow-value-badge" style="margin-right: auto;">
+                <span class="status-dot"></span>
+                זרימה מקסימלית: <strong id="max-flow-val">0</strong>
+            </div>
+        </div>
+    </div>
+    <div class="instructions"><strong>מצב זרימה/קיבולת</strong> · המקור הוא <strong style="color: var(--accent-emerald);">s</strong> · הבור הוא <strong style="color: var(--accent-rose);">t</strong> · קליק ימני למחיקה</div>
+    <div id="status-flow-text" class="flow-status-bar">מחכה להרצת אלגוריתם...</div>
+    <div id="cy-flow" class="cy-container"></div>
+</div>
+
+<!-- Insight Panel -->
+<div id="insight-panel" class="floating-panel">
+    <div class="insight-header">
+        <h4>💡 מידע למבחן</h4>
+        <select id="insightAlgoSelect" class="insight-select" onchange="showInsight(this.value)">
+            <option value="DFS">DFS</option><option value="BFS">BFS</option>
+            <option value="Dijkstra">Dijkstra</option><option value="BellmanFord">Bellman-Ford</option>
+            <option value="Prim">פרים (MST)</option><option value="Kruskal">קרוסקל (MST)</option>
+            <option value="EdmondsKarp">אדמונדס קארפ</option><option value="Dinic">דיניץ</option>
+        </select>
+    </div>
+    <div id="insight-content"></div>
+</div>
+
+<!-- Results Panel -->
+<div id="results-panel" class="floating-panel">
+    <h3 id="table-title" style="margin: 0 0 10px 0; text-align: center; font-size: 15px;">תוצאות</h3>
+    <table><thead><tr><th>צומת</th><th id="col1-header">d</th><th id="col2-header">π</th></tr></thead><tbody id="algo-table-body"></tbody></table>
+</div>
+
+<!-- DS Panel -->
+<div id="ds-panel" class="floating-panel">
+    <h3 id="ds-title" style="margin:0 0 10px 0; font-size:14px; text-align:center;">מבנה נתונים</h3>
+    <div id="ds-visualizer"></div>
+</div>
+
+<!-- Pseudocode Panel -->
+<div id="pseudo-panel" class="floating-panel">
+    <div class="pseudo-header">
+        <h4>📋 <span id="pseudo-title">Pseudocode</span></h4>
+        <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,0.06);" onclick="togglePseudo()">✕</button>
+    </div>
+    <div id="pseudo-content"></div>
+</div>
+
+<!-- Color Legend -->
+<div id="legend-panel" class="floating-panel">
+    <h4 style="margin-bottom:8px;font-size:13px;">🎨 מקרא צבעים</h4>
+    <div id="legend-content"></div>
+</div>
+
+<!-- Comparison Panel -->
+<div id="compare-panel" class="floating-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:16px;">📊 השוואת אלגוריתמים</h3>
+        <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(255,255,255,0.06);" onclick="closeCompare()">✕</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <select id="compare-algo1" class="insight-select" style="flex:1"><option value="BFS">BFS</option><option value="Dijkstra" selected>Dijkstra</option><option value="BellmanFord">Bellman-Ford</option></select>
+        <span style="color:var(--text-muted);font-weight:700;">vs</span>
+        <select id="compare-algo2" class="insight-select" style="flex:1"><option value="BFS" selected>BFS</option><option value="Dijkstra">Dijkstra</option><option value="BellmanFord">Bellman-Ford</option></select>
+    </div>
+    <button class="btn btn-compare" style="width:100%;justify-content:center;margin-bottom:12px;" onclick="runComparison()">▶ הרץ השוואה</button>
+    <div id="compare-results"></div>
+</div>
+
+<!-- Footer -->
+<div class="legal-notice">* הכלי נבנה על ידי יהונתן מרגלית כפרויקט לימודי למטרות הדגמה בלבד. התוכנה מסופקת "כפי שהיא" (AS IS), ללא כל אחריות. השימוש על אחריות המשתמש בלבד. ט.ל.ח.</div>
+
+<!-- ============================================
+     JavaScript
+     ============================================ -->
+<script>
+    // ==========================================
+    // Global Systems
+    // ==========================================
+    let animSpeed = 1; // speed multiplier
+    let isRunning = false;
+    let currentWorkspace = 'paths';
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms / animSpeed));
+
+    // Speed control
+    const speedMap = { 1: { mult: 0.5, label: '×0.5' }, 2: { mult: 1, label: '×1' }, 3: { mult: 2, label: '×2' }, 4: { mult: 5, label: '×5' } };
+    function updateSpeed(val) {
+        const s = speedMap[val];
+        animSpeed = s.mult;
+        document.getElementById('speed-label').innerText = s.label;
+        document.querySelectorAll('.speed-slider-sync').forEach(el => el.value = val);
+        document.querySelectorAll('.speed-label-sync').forEach(el => el.innerText = s.label);
+        document.getElementById('speed-slider').value = val;
+    }
+
+    // ==========================================
+    // Toast System
+    // ==========================================
+    function showToast(message, type = 'info', duration = 3000) {
+        const icons = { success: '✅', warning: '⚠️', error: '❌', info: 'ℹ️' };
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('toast-out');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    // ==========================================
+    // Custom Modal (replaces prompt)
+    // ==========================================
+    function showModal(title, defaultVal = '') {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('modal-overlay');
+            const input = document.getElementById('modal-input');
+            const titleEl = document.getElementById('modal-title');
+            titleEl.innerText = title;
+            input.value = defaultVal;
+            overlay.classList.add('show');
+            input.focus();
+            setTimeout(() => input.select(), 50);
+
+            function cleanup() {
+                overlay.classList.remove('show');
+                document.getElementById('modal-confirm').onclick = null;
+                document.getElementById('modal-cancel').onclick = null;
+                input.onkeydown = null;
+            }
+            document.getElementById('modal-confirm').onclick = () => { cleanup(); resolve(input.value); };
+            document.getElementById('modal-cancel').onclick = () => { cleanup(); resolve(null); };
+            input.onkeydown = (e) => { if (e.key === 'Enter') { cleanup(); resolve(input.value); } else if (e.key === 'Escape') { cleanup(); resolve(null); } };
+        });
+    }
+
+    // ==========================================
+    // Context Menu
+    // ==========================================
+    let ctxTarget = null;
+    let ctxCyInstance = null;
+    let ctxWorkspace = null;
+
+    function showCtxMenu(x, y, target, cyInstance, workspace) {
+        const menu = document.getElementById('ctx-menu');
+        ctxTarget = target;
+        ctxCyInstance = cyInstance;
+        ctxWorkspace = workspace;
+        
+        const editItem = document.getElementById('ctx-edit');
+        if (target.isEdge && target.isEdge()) {
+            editItem.style.display = 'flex';
+        } else {
+            editItem.style.display = 'none';
+        }
+        
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+        menu.classList.add('show');
+    }
+
+    function hideCtxMenu() {
+        document.getElementById('ctx-menu').classList.remove('show');
+        ctxTarget = null;
+    }
+
+    async function ctxEdit() {
+        hideCtxMenu();
+        if (!ctxTarget || !ctxTarget.isEdge()) return;
+        const currentVal = ctxTarget.data('weight') !== undefined ? ctxTarget.data('weight') : ctxTarget.data('capacity');
+        const field = ctxTarget.data('capacity') !== undefined ? 'capacity' : 'weight';
+        const label = field === 'capacity' ? 'קיבולת חדשה:' : 'משקל חדש:';
+        const val = await showModal(label, String(currentVal));
+        if (val !== null && !isNaN(val)) {
+            ctxTarget.data(field, parseInt(val));
+            showToast(`${field === 'capacity' ? 'קיבולת' : 'משקל'} עודכן ל-${val}`, 'success');
+        }
+    }
+
+    function ctxDelete() {
+        hideCtxMenu();
+        if (!ctxTarget || !ctxCyInstance) return;
+        if (ctxTarget.isNode && ctxTarget.isNode()) {
+            const id = ctxTarget.id();
+            if (id === 's' || id === 't') { showToast('לא ניתן למחוק את s או t', 'warning'); return; }
+            ctxCyInstance.remove(ctxTarget.connectedEdges());
+            ctxCyInstance.remove(ctxTarget);
+            showToast(`צומת ${id} נמחק`, 'info');
+            if (ctxWorkspace === 'paths') updateDropdownPaths();
+            else if (ctxWorkspace === 'mst') updateDropdownMst();
+        } else if (ctxTarget.isEdge && ctxTarget.isEdge()) {
+            ctxCyInstance.remove(ctxTarget);
+            showToast('קשת נמחקה', 'info');
+        }
+    }
+
+    document.addEventListener('click', hideCtxMenu);
+    document.addEventListener('contextmenu', (e) => {
+        if (!e.target.closest('.cy-container')) return;
+    });
+
+    function attachCtxMenu(cyInstance, workspace) {
+        cyInstance.on('cxttap', 'node, edge', function(evt) {
+            evt.originalEvent.preventDefault();
+            if (isRunning) return;
+            showCtxMenu(evt.originalEvent.clientX, evt.originalEvent.clientY, evt.target, cyInstance, workspace);
+        });
+        cyInstance.on('cxttap', function(evt) {
+            if (evt.target === cyInstance) hideCtxMenu();
+        });
+    }
+
+    // ==========================================
+    // Pseudocode System
+    // ==========================================
+    let pseudoVisible = false;
+    const pseudocodes = {
+        DFS: { title: 'DFS(G, s)', lines: [
+            'DFS(G, s):',
+            '  visited ← ∅',
+            '  VISIT(s)',
+            '',
+            'VISIT(u):',
+            '  visited ← visited ∪ {u}',
+            '  time ← time + 1',
+            '  u.d ← time',
+            '  for each (u,v) ∈ E:',
+            '    if v ∉ visited:',
+            '      VISIT(v)',
+            '  time ← time + 1',
+            '  u.f ← time'
+        ]},
+        BFS: { title: 'BFS(G, s)', lines: [
+            'BFS(G, s):',
+            '  for each v ∈ V: d[v]←∞',
+            '  d[s] ← 0',
+            '  Q ← {s}',
+            '',
+            '  while Q ≠ ∅:',
+            '    u ← DEQUEUE(Q)',
+            '    for each (u,v) ∈ E:',
+            '      if d[v] = ∞:',
+            '        d[v] ← d[u] + 1',
+            '        π[v] ← u',
+            '        ENQUEUE(Q, v)'
+        ]},
+        Dijkstra: { title: 'Dijkstra(G, s)', lines: [
+            'Dijkstra(G, s):',
+            '  for each v ∈ V: d[v]←∞',
+            '  d[s] ← 0',
+            '  PQ ← all vertices',
+            '',
+            '  while PQ ≠ ∅:',
+            '    u ← EXTRACT-MIN(PQ)',
+            '    for each (u,v) ∈ E:',
+            '      if d[u]+w(u,v) < d[v]:',
+            '        d[v] ← d[u]+w(u,v)',
+            '        π[v] ← u',
+            '        DECREASE-KEY(PQ, v)'
+        ]},
+        BellmanFord: { title: 'Bellman-Ford(G, s)', lines: [
+            'Bellman-Ford(G, s):',
+            '  for each v ∈ V: d[v]←∞',
+            '  d[s] ← 0',
+            '',
+            '  for i = 1 to |V|-1:',
+            '    for each (u,v) ∈ E:',
+            '      if d[u]+w(u,v) < d[v]:',
+            '        d[v] ← d[u]+w(u,v)',
+            '        π[v] ← u',
+            '',
+            '  // check negative cycle',
+            '  for each (u,v) ∈ E:',
+            '    if d[u]+w < d[v]: ERROR'
+        ]},
+        Prim: { title: 'Prim(G, s)', lines: [
+            'Prim(G, s):',
+            '  T ← {s}',
+            '',
+            '  while |T| < |V|:',
+            '    find min-weight edge',
+            '      (u,v): u∈T, v∉T',
+            '    T ← T ∪ {v}',
+            '    MST ← MST ∪ {(u,v)}',
+            '    total += w(u,v)'
+        ]},
+        Kruskal: { title: 'Kruskal(G)', lines: [
+            'Kruskal(G):',
+            '  sort edges by weight',
+            '  UF ← MakeSet(V)',
+            '',
+            '  for each (u,v) ∈ sorted:',
+            '    if Find(u) ≠ Find(v):',
+            '      MST ← MST ∪ {(u,v)}',
+            '      Union(u, v)',
+            '      total += w(u,v)',
+            '    else:',
+            '      discard (u,v)'
+        ]},
+        EdmondsKarp: { title: 'Edmonds-Karp', lines: [
+            'Edmonds-Karp(G, s, t):',
+            '  while true:',
+            '    path ← BFS(Gf, s, t)',
+            '    if path = ∅: break',
+            '',
+            '    bn ← min residual cap',
+            '    for each edge in path:',
+            '      if forward:',
+            '        f(e) += bn',
+            '      else:',
+            '        f(e) -= bn',
+            '    maxFlow += bn'
+        ]},
+        Dinic: { title: 'Dinic(G, s, t)', lines: [
+            'Dinic(G, s, t):',
+            '  while true:',
+            '    level ← BFS(Gf, s)',
+            '    if t unreachable: break',
+            '',
+            '    // blocking flow',
+            '    while true:',
+            '      f ← DFS(s, t, ∞)',
+            '      if f = 0: break',
+            '      maxFlow += f'
+        ]}
+    };
+
+    function togglePseudo() {
+        const panel = document.getElementById('pseudo-panel');
+        pseudoVisible = !pseudoVisible;
+        panel.style.display = pseudoVisible ? 'block' : 'none';
+    }
+
+    function showPseudocode(algoKey) {
+        const pc = pseudocodes[algoKey];
+        if (!pc) return;
+        const panel = document.getElementById('pseudo-panel');
+        panel.style.display = 'block'; pseudoVisible = true;
+        document.getElementById('pseudo-title').innerText = pc.title;
+        const content = document.getElementById('pseudo-content');
+        content.innerHTML = pc.lines.map((line, i) => `<div class="pseudo-line" id="pl-${i}">${line || ' '}</div>`).join('');
+    }
+
+    function highlightPseudoLine(lineIndex) {
+        document.querySelectorAll('.pseudo-line').forEach((el, i) => {
+            el.classList.remove('active');
+            if (i < lineIndex) el.classList.add('done');
+        });
+        const el = document.getElementById('pl-' + lineIndex);
+        if (el) { el.classList.add('active'); el.scrollIntoView({ block: 'nearest' }); }
+    }
+
+    function clearPseudoHighlight() {
+        document.querySelectorAll('.pseudo-line').forEach(el => { el.classList.remove('active', 'done'); });
+    }
+
+    // ==========================================
+    // Color Legend System
+    // ==========================================
+    const legendConfigs = {
+        DFS: [
+            { color: '#475569', label: 'נמצא (אפור)' },
+            { color: '#0f172a', label: 'סיים (שחור)' },
+            { color: '#3b82f6', label: 'קשת בעץ DFS' },
+        ],
+        BFS: [
+            { color: '#475569', label: 'בתור (בבדיקה)' },
+            { color: '#3b82f6', label: 'קשת בעץ BFS' },
+            { color: '#ef4444', label: 'רמה 0' }, { color: '#3b82f6', label: 'רמה 4' },
+        ],
+        Dijkstra: [
+            { color: '#475569', label: 'בבדיקה' },
+            { color: '#0f172a', label: 'סופי (finalized)' },
+            { color: '#f59e0b', label: 'קשת נבדקת' },
+            { color: '#3b82f6', label: 'קשת שיפרה מרחק' },
+        ],
+        BellmanFord: [
+            { color: '#f59e0b', label: 'קשת נבדקת' },
+            { color: '#3b82f6', label: 'קשת שיפרה מרחק' },
+        ],
+        Prim: [
+            { color: '#059669', label: 'בעץ MST' },
+            { color: '#eab308', label: 'קשת נבדקת' },
+            { color: '#10b981', label: 'קשת MST' },
+        ],
+        Kruskal: [
+            { color: '#059669', label: 'בעץ MST' },
+            { color: '#eab308', label: 'קשת נבדקת' },
+            { color: '#10b981', label: 'קשת MST' },
+            { color: '#ef4444', label: 'נפסלה (מעגל)' },
+        ],
+        EdmondsKarp: [
+            { color: '#fbbf24', label: 'מסלול משפר' },
+            { color: '#f43f5e', label: 'קשת אחורה' },
+            { color: '#a855f7', label: 'בבדיקה' },
+            { color: '#dc2626', label: 'רוויה (saturated)' },
+        ],
+        Dinic: [
+            { color: '#10b981', label: 'רמה 0' }, { color: '#3b82f6', label: 'רמה 1' },
+            { color: '#a855f7', label: 'בבדיקה DFS' },
+            { color: '#dc2626', label: 'רוויה' },
+        ]
+    };
+
+    function showLegend(algoKey) {
+        const config = legendConfigs[algoKey];
+        if (!config) return;
+        const panel = document.getElementById('legend-panel');
+        panel.style.display = 'block';
+        const content = document.getElementById('legend-content');
+        content.innerHTML = config.map(item => `<div class="legend-item"><div class="legend-dot" style="background:${item.color};"></div><span>${item.label}</span></div>`).join('');
+    }
+
+    function hideLegend() { document.getElementById('legend-panel').style.display = 'none'; }
+
+    // ==========================================
+    // Import/Export
+    // ==========================================
+    function getCyInstance(mode) {
+        if (mode === 'paths') return cyPaths;
+        if (mode === 'mst') return cyMst;
+        if (mode === 'flow') return cyFlow;
+        return null;
+    }
+
+    function exportGraph(mode) {
+        const cy = getCyInstance(mode);
+        if (!cy) { showToast('אתחל קודם את הסביבה', 'warning'); return; }
+        const data = { mode, elements: cy.json().elements };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `graph-${mode}-${Date.now()}.json`;
+        a.click();
+        showToast('הגרף יוצא בהצלחה!', 'success');
+    }
+
+    let pendingImportMode = null;
+    function importGraph(mode) {
+        pendingImportMode = mode;
+        document.getElementById('import-file-input').click();
+    }
+
+    document.getElementById('import-file-input')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const data = JSON.parse(ev.target.result);
+                const cy = getCyInstance(pendingImportMode);
+                if (!cy) { showToast('אתחל את הסביבה קודם', 'warning'); return; }
+                cy.elements().remove();
+                cy.json({ elements: data.elements });
+                if (pendingImportMode === 'paths') updateDropdownPaths();
+                else if (pendingImportMode === 'mst') updateDropdownMst();
+                showToast('הגרף יובא בהצלחה!', 'success');
+            } catch (err) { showToast('שגיאה בקריאת הקובץ', 'error'); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    });
+
+    // ==========================================
+    // Preset Graphs
+    // ==========================================
+    const presets = {
+        paths: [
+            { name: 'גרף בסיסי', desc: '6 צמתים, 7 קשתות', elements: [
+                { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } }, { data: { id: 'E' } }, { data: { id: 'F' } },
+                { data: { source: 'A', target: 'B', weight: 4 } }, { data: { source: 'A', target: 'D', weight: 2 } },
+                { data: { source: 'B', target: 'C', weight: 5 } }, { data: { source: 'B', target: 'E', weight: 1 } },
+                { data: { source: 'D', target: 'E', weight: 8 } }, { data: { source: 'E', target: 'F', weight: 3 } },
+                { data: { source: 'C', target: 'F', weight: 6 } }
+            ]},
+            { name: 'גרף עם משקל שלילי', desc: 'לבדיקת Bellman-Ford', elements: [
+                { data: { id: 'S' } }, { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } },
+                { data: { source: 'S', target: 'A', weight: 6 } }, { data: { source: 'S', target: 'B', weight: 7 } },
+                { data: { source: 'A', target: 'C', weight: 5 } }, { data: { source: 'A', target: 'B', weight: 8 } },
+                { data: { source: 'B', target: 'D', weight: -3 } }, { data: { source: 'C', target: 'D', weight: -4 } },
+                { data: { source: 'B', target: 'C', weight: -2 } }
+            ]},
+            { name: 'DAG (גרף אציקלי)', desc: 'מיון טופולוגי', elements: [
+                { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } }, { data: { id: 'E' } },
+                { data: { source: 'A', target: 'B', weight: 3 } }, { data: { source: 'A', target: 'C', weight: 6 } },
+                { data: { source: 'B', target: 'C', weight: 4 } }, { data: { source: 'B', target: 'D', weight: 4 } },
+                { data: { source: 'C', target: 'D', weight: 8 } }, { data: { source: 'C', target: 'E', weight: 2 } },
+                { data: { source: 'D', target: 'E', weight: 1 } }
+            ]}
+        ],
+        mst: [
+            { name: 'גרף בסיסי (5 צמתים)', desc: 'ברירת מחדל', elements: [
+                { data: { id: 'V1' } }, { data: { id: 'V2' } }, { data: { id: 'V3' } }, { data: { id: 'V4' } }, { data: { id: 'V5' } },
+                { data: { source: 'V1', target: 'V2', weight: 9 } }, { data: { source: 'V1', target: 'V3', weight: 4 } },
+                { data: { source: 'V2', target: 'V3', weight: 2 } }, { data: { source: 'V2', target: 'V4', weight: 7 } },
+                { data: { source: 'V3', target: 'V4', weight: 3 } }, { data: { source: 'V3', target: 'V5', weight: 6 } },
+                { data: { source: 'V4', target: 'V5', weight: 1 } }
+            ]},
+            { name: 'K4 שלם', desc: '4 צמתים, כל הקשתות', elements: [
+                { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } },
+                { data: { source: 'A', target: 'B', weight: 5 } }, { data: { source: 'A', target: 'C', weight: 3 } },
+                { data: { source: 'A', target: 'D', weight: 7 } }, { data: { source: 'B', target: 'C', weight: 4 } },
+                { data: { source: 'B', target: 'D', weight: 2 } }, { data: { source: 'C', target: 'D', weight: 6 } }
+            ]}
+        ],
+        flow: [
+            { name: 'רשת בסיסית', desc: 'ברירת מחדל', elements: [
+                { data: { id: 's' } }, { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } }, { data: { id: 't' } },
+                { data: { source: 's', target: 'A', capacity: 10, flow: 0 } }, { data: { source: 's', target: 'C', capacity: 10, flow: 0 } },
+                { data: { source: 'A', target: 'B', capacity: 4, flow: 0 } }, { data: { source: 'A', target: 'C', capacity: 2, flow: 0 } },
+                { data: { source: 'A', target: 'D', capacity: 8, flow: 0 } }, { data: { source: 'C', target: 'D', capacity: 9, flow: 0 } },
+                { data: { source: 'B', target: 't', capacity: 10, flow: 0 } }, { data: { source: 'D', target: 'B', capacity: 6, flow: 0 } },
+                { data: { source: 'D', target: 't', capacity: 10, flow: 0 } }
+            ]},
+            { name: 'רשת מורכבת', desc: '8 צמתים', elements: [
+                { data: { id: 's' } }, { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } },
+                { data: { id: 'D' } }, { data: { id: 'E' } }, { data: { id: 'F' } }, { data: { id: 't' } },
+                { data: { source: 's', target: 'A', capacity: 16, flow: 0 } }, { data: { source: 's', target: 'C', capacity: 13, flow: 0 } },
+                { data: { source: 'A', target: 'B', capacity: 12, flow: 0 } }, { data: { source: 'A', target: 'C', capacity: 4, flow: 0 } },
+                { data: { source: 'C', target: 'A', capacity: 10, flow: 0 } }, { data: { source: 'B', target: 'D', capacity: 7, flow: 0 } },
+                { data: { source: 'C', target: 'E', capacity: 14, flow: 0 } }, { data: { source: 'D', target: 'E', capacity: 5, flow: 0 } },
+                { data: { source: 'D', target: 't', capacity: 10, flow: 0 } }, { data: { source: 'E', target: 't', capacity: 20, flow: 0 } }
+            ]}
+        ]
+    };
+
+    function togglePresetMenu(mode) {
+        const menu = document.getElementById('preset-menu-' + mode);
+        const isOpen = menu.classList.contains('show');
+        document.querySelectorAll('.preset-dropdown').forEach(m => m.classList.remove('show'));
+        if (isOpen) return;
+        
+        menu.innerHTML = (presets[mode] || []).map((p, i) =>
+            `<div class="preset-item" onclick="loadPreset('${mode}', ${i})">${p.name}<small>${p.desc}</small></div>`
+        ).join('');
+        menu.classList.add('show');
+    }
+
+    function loadPreset(mode, index) {
+        const preset = presets[mode][index];
+        const cy = getCyInstance(mode);
+        if (!cy) return;
+        cy.elements().remove();
+        cy.add(preset.elements);
+        cy.layout({ name: 'breadthfirst', directed: mode !== 'mst', padding: 50, spacingFactor: mode === 'flow' ? 1.5 : 1 }).run();
+        if (mode === 'paths') { nodeCounterPaths = cy.nodes().length; updateDropdownPaths(); resetGraphStatusPaths(); }
+        else if (mode === 'mst') { nodeCounterMst = cy.nodes().length; updateDropdownMst(); resetGraphStatusMst(); }
+        else if (mode === 'flow') { resetFlowGraph(); }
+        document.querySelectorAll('.preset-dropdown').forEach(m => m.classList.remove('show'));
+        showToast(`נטען: ${preset.name}`, 'success');
+    }
+    document.addEventListener('click', (e) => { if (!e.target.closest('.btn-preset') && !e.target.closest('.preset-dropdown')) { document.querySelectorAll('.preset-dropdown').forEach(m => m.classList.remove('show')); } });
+
+    // ==========================================
+    // Algorithm Comparison
+    // ==========================================
+    function openCompare() {
+        if (isRunning) return;
+        document.getElementById('compare-panel').style.display = 'block';
+        document.getElementById('compare-results').innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">בחר שני אלגוריתמים ולחץ הרץ</div>';
+    }
+    function closeCompare() { document.getElementById('compare-panel').style.display = 'none'; }
+
+    function runComparison() {
+        if (!cyPaths || isRunning) return;
+        const algo1 = document.getElementById('compare-algo1').value;
+        const algo2 = document.getElementById('compare-algo2').value;
+        const startId = document.getElementById('startNodeSelect').value;
+        const nodes = cyPaths.nodes();
+
+        function computeDists(algoKey) {
+            const dist = {}; const parent = {};
+            nodes.forEach(n => { dist[n.id()] = Infinity; parent[n.id()] = '-'; });
+            dist[startId] = 0;
+            if (algoKey === 'BFS') {
+                let queue = [startId]; let visited = new Set([startId]);
+                while (queue.length > 0) {
+                    let uId = queue.shift();
+                    for (let edge of cyPaths.getElementById(uId).outgoers('edge')) {
+                        let vId = edge.target().id();
+                        if (!visited.has(vId)) { visited.add(vId); dist[vId] = dist[uId] + 1; parent[vId] = uId; queue.push(vId); }
+                    }
+                }
+            } else if (algoKey === 'Dijkstra') {
+                let pq = nodes.map(n => n.id());
+                while (pq.length > 0) {
+                    pq.sort((a, b) => dist[a] - dist[b]);
+                    let uId = pq.shift();
+                    if (dist[uId] === Infinity) break;
+                    for (let edge of cyPaths.getElementById(uId).outgoers('edge')) {
+                        let vId = edge.target().id();
+                        let nd = dist[uId] + edge.data('weight');
+                        if (nd < dist[vId]) { dist[vId] = nd; parent[vId] = uId; }
+                    }
+                }
+            } else if (algoKey === 'BellmanFord') {
+                const edges = cyPaths.edges();
+                for (let i = 1; i < nodes.length; i++) {
+                    for (let edge of edges) {
+                        let uId = edge.source().id(); let vId = edge.target().id();
+                        if (dist[uId] !== Infinity && dist[uId] + edge.data('weight') < dist[vId]) {
+                            dist[vId] = dist[uId] + edge.data('weight'); parent[vId] = uId;
+                        }
+                    }
+                }
+            }
+            return { dist, parent };
+        }
+
+        const r1 = computeDists(algo1);
+        const r2 = computeDists(algo2);
+        const info1 = algoInsights[algo1] || algoInsights['BFS'];
+        const info2 = algoInsights[algo2] || algoInsights['BFS'];
+
+        let html = `<div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">צומת התחלה: <strong style="color:var(--text-primary);">${startId}</strong></div>`;
+        html += `<table><thead><tr><th>צומת</th><th style="color:var(--accent-blue);">${algo1}</th><th style="color:var(--accent-amber);">${algo2}</th><th>שווה?</th></tr></thead><tbody>`;
+        nodes.forEach(n => {
+            const id = n.id();
+            const d1 = r1.dist[id] === Infinity ? '∞' : r1.dist[id];
+            const d2 = r2.dist[id] === Infinity ? '∞' : r2.dist[id];
+            const match = d1 === d2 ? '✅' : '❌';
+            html += `<tr><td>${id}</td><td>${d1}</td><td>${d2}</td><td>${match}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        html += `<div style="margin-top:12px;font-size:11px;color:var(--text-muted);padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;">
+            <div><strong style="color:var(--accent-blue);">${algo1}:</strong> ${info1.complexity}</div>
+            <div><strong style="color:var(--accent-amber);">${algo2}:</strong> ${info2.complexity}</div>
+        </div>`;
+        document.getElementById('compare-results').innerHTML = html;
+        showToast('ההשוואה הושלמה', 'success');
+    }
+
+    // ==========================================
+    // Insights
+    // ==========================================
+    const algoInsights = {
+        'DFS': { title: 'DFS - סריקה לעומק', complexity: 'O(V + E)', space: 'O(V) מחסנית', useCase: 'זיהוי מעגלים, רכיבים כשירים חזק, מיון טופולוגי.' },
+        'BFS': { title: 'BFS - סריקה לרוחב', complexity: 'O(V + E)', space: 'O(V) תור', useCase: 'מציאת מסלול קצר ביותר (במונחי קשתות) בגרף ללא משקלים.' },
+        'Dijkstra': { title: 'Dijkstra - דייקסטרה', complexity: 'O(E log V)', space: 'O(V)', useCase: 'מסלול קצר בגרף עם משקלים חיוביים. חמדן.' },
+        'BellmanFord': { title: 'Bellman-Ford - בלמן פורד', complexity: 'O(V * E)', space: 'O(V)', useCase: 'זיהוי מעגלים שליליים וטיפול במשקלים שליליים.' },
+        'Prim': { title: 'Prim (פרים) - עפ"מ', complexity: 'O(E log V)', space: 'O(V)', useCase: 'עץ פורש מינימלי. מתחיל מצומת בודד ו"מגדל" את העץ ע"י בחירת הקשת הזולה ביותר.' },
+        'Kruskal': { title: 'Kruskal (קרוסקל) - עפ"מ', complexity: 'O(E log E)', space: 'O(V)', useCase: 'עץ פורש מינימלי. ממיין את כל הקשתות. מוסיף קשת רק אם לא סוגרת מעגל (Union-Find).' },
+        'EdmondsKarp': { title: 'Edmonds-Karp', complexity: 'O(V * E²)', space: 'O(V+E)', useCase: 'מציאת זרימה מקסימלית ע"י BFS.' },
+        'Dinic': { title: 'Dinic', complexity: 'O(V² * E)', space: 'O(V+E)', useCase: 'אלגוריתם זרימה יעיל. בונה "גרף רמות" ב-BFS, ודוחף "זרימה חוסמת" ב-DFS.' }
+    };
+
+    function toggleInsight() {
+        const panel = document.getElementById('insight-panel');
+        panel.style.display = (panel.style.display === "block") ? "none" : "block";
+        if(panel.style.display === "block") showInsight(document.getElementById('insightAlgoSelect').value);
+    }
+    function showInsight(algoKey) {
+        const info = algoInsights[algoKey]; if (!info) return;
+        document.getElementById('insightAlgoSelect').value = algoKey;
+        document.getElementById('insight-content').innerHTML = `<b>${info.title}</b><br><br><span class="insight-tag">⏱️ זמן:</span> ${info.complexity}<br><span class="insight-tag">📦 זיכרון:</span> ${info.space}<br><br><span class="insight-tag">🎯 שימוש:</span> ${info.useCase}`;
+    }
+
+    function updateDS(title, items) {
+        const panel = document.getElementById('ds-panel'); panel.style.display = "block";
+        document.getElementById('ds-title').innerText = title; const vis = document.getElementById('ds-visualizer'); vis.innerHTML = "";
+        items.forEach(i => { const div = document.createElement('div'); div.className = 'ds-item'; div.innerText = i; vis.appendChild(div); });
+    }
+
+    // ==========================================
+    // Cytoscape Shared Styles
+    // ==========================================
+    const nodeStyleBase = {
+        'background-color': '#1e293b', 'border-width': 2, 'border-color': '#475569',
+        'label': 'data(id)', 'text-valign': 'center', 'text-halign': 'center',
+        'font-size': '14px', 'font-family': 'Inter, sans-serif', 'font-weight': '700',
+        'color': '#e2e8f0', 'width': '44px', 'height': '44px',
+        'text-outline-color': '#1e293b', 'text-outline-width': '1px', 'overlay-padding': '6px'
+    };
+
+    // ==========================================
+    // Workspace 1: Paths
+    // ==========================================
+    let cyPaths; let nodeCounterPaths = 6; let selectedNodePaths = null; let algoDataPaths = {};
+
+    function initPathsGraph() {
+        cyPaths = cytoscape({
+            container: document.getElementById('cy-paths'),
+            elements: [ { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } }, { data: { id: 'E' } }, { data: { id: 'F' } },
+                { data: { id: 'ab', source: 'A', target: 'B', weight: 4 } }, { data: { id: 'ad', source: 'A', target: 'D', weight: 2 } }, { data: { id: 'bc', source: 'B', target: 'C', weight: 5 } },
+                { data: { id: 'be', source: 'B', target: 'E', weight: 1 } }, { data: { id: 'de', source: 'D', target: 'E', weight: 8 } }, { data: { id: 'ef', source: 'E', target: 'F', weight: 3 } }, { data: { id: 'cf', source: 'C', target: 'F', weight: 6 } } ],
+            style: [
+                { selector: 'node', style: { ...nodeStyleBase } },
+                { selector: '.gray', style: { 'background-color': '#475569', 'border-color': '#94a3b8', 'color': '#f1f5f9' } },
+                { selector: '.black', style: { 'background-color': '#0f172a', 'border-color': '#10b981', 'color': '#10b981', 'border-width': 3 } },
+                { selector: 'edge', style: { 'width': 2.5, 'line-color': '#334155', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#334155', 'label': 'data(weight)', 'color': '#f59e0b', 'font-weight': 'bold', 'curve-style': 'bezier', 'font-size': '12px', 'font-family': 'Inter, sans-serif', 'text-background-color': '#0f172a', 'text-background-opacity': 0.85, 'text-background-padding': '3px', 'text-background-shape': 'roundrectangle', 'arrow-scale': 1.2 }},
+                { selector: '.edge-highlighted', style: { 'line-color': '#3b82f6', 'width': 4, 'target-arrow-color': '#3b82f6' } },
+                { selector: '.edge-checking', style: { 'line-color': '#f59e0b', 'line-style': 'dashed', 'width': 4, 'target-arrow-color': '#f59e0b' } }
+            ], layout: { name: 'breadthfirst', directed: true, padding: 50 }
+        });
+        updateDropdownPaths();
+        attachCtxMenu(cyPaths, 'paths');
+        cyPaths.on('tap', async function(evt) {
+            if (isRunning) return; resetGraphStatusPaths();
+            if (evt.target === cyPaths) { cyPaths.add({ group: 'nodes', data: { id: String.fromCharCode(65 + nodeCounterPaths++) }, position: evt.position }); updateDropdownPaths(); }
+            else if (evt.target.isNode()) {
+                if (!selectedNodePaths) { selectedNodePaths = evt.target.addClass('gray'); }
+                else { let w = await showModal("משקל הקשת:", "1"); if (w !== null && !isNaN(w)) { cyPaths.add({ group: 'edges', data: { source: selectedNodePaths.id(), target: evt.target.id(), weight: parseInt(w) } }); } selectedNodePaths.removeClass('gray'); selectedNodePaths = null; }
+            }
+        });
+    }
+
+    function updateDropdownPaths() { const select = document.getElementById('startNodeSelect'); select.innerHTML = ''; cyPaths.nodes().forEach(n => { let opt = document.createElement('option'); opt.value = n.id(); opt.innerText = n.id(); select.appendChild(opt); }); }
+    function resetGraphStatusPaths() { cyPaths.elements().removeClass('gray black edge-highlighted edge-checking'); cyPaths.nodes().removeStyle('background-color color'); document.getElementById('algo-table-body').innerHTML = ""; document.getElementById('ds-panel').style.display = "none"; document.getElementById('status-paths').innerText = "מצב עריכה"; algoDataPaths = {}; isRunning = false; hideLegend(); clearPseudoHighlight(); }
+    function clearBoardPaths() { cyPaths.elements().remove(); nodeCounterPaths = 0; resetGraphStatusPaths(); updateDropdownPaths(); }
+    function updateTablePaths(type) { const tbody = document.getElementById('algo-table-body'); tbody.innerHTML = ""; for (const id in algoDataPaths) { const tr = document.createElement('tr'); let d = algoDataPaths[id].dist; let f = algoDataPaths[id].f; let col1 = (type === 'DFS') ? (algoDataPaths[id].d || "") : (d === Infinity ? '∞' : d); let col2 = (type === 'DFS') ? (f || "...") : (algoDataPaths[id].parent || "-"); tr.innerHTML = `<td>${id}</td><td>${col1}</td><td>${col2}</td>`; tbody.appendChild(tr); } }
+
+    async function runDFS() {
+        showInsight('DFS'); showPseudocode('DFS'); showLegend('DFS'); resetGraphStatusPaths(); isRunning = true;
+        document.getElementById('table-title').innerText = "זמני DFS"; document.getElementById('col1-header').innerText = "d"; document.getElementById('col2-header').innerText = "f";
+        let time = 0; let stack = []; const startId = document.getElementById('startNodeSelect').value; const visited = new Set();
+        async function visit(uId) {
+            visited.add(uId); let u = cyPaths.getElementById(uId).addClass('gray');
+            time++; algoDataPaths[uId] = { d: time, parent: "-" }; stack.push(uId);
+            highlightPseudoLine(5); updateDS("מחסנית (Stack)", stack); updateTablePaths('DFS'); await sleep(500);
+            highlightPseudoLine(8);
+            for (let edge of u.outgoers('edge')) { let vId = edge.target().id();
+                highlightPseudoLine(9);
+                if (!visited.has(vId)) { edge.addClass('edge-highlighted'); highlightPseudoLine(10); await visit(vId); }
+            }
+            time++; algoDataPaths[uId].f = time; u.removeClass('gray').addClass('black');
+            highlightPseudoLine(12); stack.pop(); updateDS("מחסנית", stack); updateTablePaths('DFS'); await sleep(300);
+        }
+        highlightPseudoLine(2); await visit(startId); isRunning = false; showToast('DFS הסתיים', 'success');
+    }
+
+    async function runBFS() {
+        showInsight('BFS'); showPseudocode('BFS'); showLegend('BFS'); resetGraphStatusPaths(); isRunning = true;
+        document.getElementById('table-title').innerText = "מרחקי BFS"; document.getElementById('col1-header').innerText = "מרחק"; document.getElementById('col2-header').innerText = "π";
+        const startId = document.getElementById('startNodeSelect').value;
+        const levelColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'];
+        cyPaths.nodes().forEach(n => algoDataPaths[n.id()] = { dist: Infinity, parent: "-" });
+        highlightPseudoLine(1); algoDataPaths[startId].dist = 0;
+        highlightPseudoLine(2); let queue = [startId]; let visited = new Set([startId]);
+        while (queue.length > 0) {
+            highlightPseudoLine(5); updateDS("תור (Queue)", queue);
+            let uId = queue.shift(); highlightPseudoLine(6);
+            let u = cyPaths.getElementById(uId).addClass('gray'); updateTablePaths('BFS'); await sleep(500);
+            for (let edge of u.outgoers('edge')) {
+                let vId = edge.target().id(); highlightPseudoLine(7);
+                if (!visited.has(vId)) {
+                    highlightPseudoLine(9); visited.add(vId);
+                    algoDataPaths[vId] = { dist: algoDataPaths[uId].dist + 1, parent: uId };
+                    edge.addClass('edge-highlighted'); queue.push(vId); updateTablePaths('BFS'); await sleep(300);
+                }
+            }
+            u.removeClass('gray').style('background-color', levelColors[algoDataPaths[uId].dist % 6]).style('color', '#fff'); await sleep(200);
+        }
+        isRunning = false; showToast('BFS הסתיים', 'success');
+    }
+
+    async function runDijkstra() {
+        showInsight('Dijkstra'); showPseudocode('Dijkstra'); showLegend('Dijkstra');
+        if (cyPaths.edges().some(e => e.data('weight') < 0)) showToast("אזהרה: יש משקלים שליליים!", 'warning');
+        resetGraphStatusPaths(); isRunning = true; document.getElementById('table-title').innerText = "Dijkstra";
+        const startId = document.getElementById('startNodeSelect').value;
+        cyPaths.nodes().forEach(n => algoDataPaths[n.id()] = { dist: Infinity, parent: "-" });
+        highlightPseudoLine(1); algoDataPaths[startId].dist = 0;
+        highlightPseudoLine(3); let pq = cyPaths.nodes().map(n => n.id());
+        while (pq.length > 0) {
+            pq.sort((a, b) => algoDataPaths[a].dist - algoDataPaths[b].dist);
+            highlightPseudoLine(5); updateDS("תור עדיפויות (PQ)", pq.map(id => `${id}:${algoDataPaths[id].dist === Infinity ? '∞' : algoDataPaths[id].dist}`));
+            let uId = pq.shift(); highlightPseudoLine(6);
+            if (algoDataPaths[uId].dist === Infinity) break;
+            let u = cyPaths.getElementById(uId).addClass('gray'); await sleep(500);
+            for (let edge of u.outgoers('edge')) {
+                let vId = edge.target().id(); highlightPseudoLine(7); edge.addClass('edge-checking'); await sleep(250);
+                let newDist = algoDataPaths[uId].dist + edge.data('weight');
+                highlightPseudoLine(8);
+                if (newDist < algoDataPaths[vId].dist) {
+                    algoDataPaths[vId].dist = newDist; algoDataPaths[vId].parent = uId;
+                    highlightPseudoLine(9); edge.removeClass('edge-checking').addClass('edge-highlighted'); updateTablePaths('Dijkstra');
+                } else edge.removeClass('edge-checking');
+            }
+            u.removeClass('gray').addClass('black');
+        }
+        isRunning = false; showToast('Dijkstra הסתיים', 'success');
+    }
+
+    async function runBellmanFord() {
+        showInsight('BellmanFord'); showPseudocode('BellmanFord'); showLegend('BellmanFord'); resetGraphStatusPaths(); isRunning = true;
+        document.getElementById('table-title').innerText = "Bellman-Ford";
+        const startId = document.getElementById('startNodeSelect').value; const nodes = cyPaths.nodes(); const edges = cyPaths.edges();
+        nodes.forEach(n => algoDataPaths[n.id()] = { dist: Infinity, parent: "-" });
+        highlightPseudoLine(1); algoDataPaths[startId].dist = 0; updateTablePaths('BFS');
+        for (let i = 1; i < nodes.length; i++) {
+            highlightPseudoLine(4); document.getElementById('status-paths').innerText = `איטרציה ${i}/${nodes.length - 1}`;
+            for (let edge of edges) {
+                let uId = edge.source().id(); let vId = edge.target().id();
+                highlightPseudoLine(5); edge.addClass('edge-checking'); await sleep(100);
+                if (algoDataPaths[uId].dist !== Infinity && algoDataPaths[uId].dist + edge.data('weight') < algoDataPaths[vId].dist) {
+                    highlightPseudoLine(7); algoDataPaths[vId].dist = algoDataPaths[uId].dist + edge.data('weight'); algoDataPaths[vId].parent = uId;
+                    edge.addClass('edge-highlighted'); updateTablePaths('BFS'); await sleep(150);
+                }
+                edge.removeClass('edge-checking');
+            }
+        }
+        highlightPseudoLine(11);
+        for (let edge of edges) {
+            if (algoDataPaths[edge.source().id()].dist + edge.data('weight') < algoDataPaths[edge.target().id()].dist) { showToast("זוהה מעגל שלילי!", 'error'); break; }
+        }
+        document.getElementById('status-paths').innerText = "הסתיים"; isRunning = false; showToast('Bellman-Ford הסתיים', 'success');
+    }
+
+    // ==========================================
+    // Workspace 2: MST
+    // ==========================================
+    let cyMst; let nodeCounterMst = 1; let selectedNodeMst = null; let isMstInit = false;
+
+    function initMstGraph() {
+        cyMst = cytoscape({
+            container: document.getElementById('cy-mst'),
+            elements: [ { data: { id: 'V1' } }, { data: { id: 'V2' } }, { data: { id: 'V3' } }, { data: { id: 'V4' } }, { data: { id: 'V5' } },
+                { data: { id: 'e1', source: 'V1', target: 'V2', weight: 9 } }, { data: { id: 'e2', source: 'V1', target: 'V3', weight: 4 } },
+                { data: { id: 'e3', source: 'V2', target: 'V3', weight: 2 } }, { data: { id: 'e4', source: 'V2', target: 'V4', weight: 7 } },
+                { data: { id: 'e5', source: 'V3', target: 'V4', weight: 3 } }, { data: { id: 'e6', source: 'V3', target: 'V5', weight: 6 } },
+                { data: { id: 'e7', source: 'V4', target: 'V5', weight: 1 } } ],
+            style: [
+                { selector: 'node', style: { ...nodeStyleBase } },
+                { selector: '.in-tree', style: { 'background-color': '#059669', 'color': '#fff', 'border-color': '#10b981', 'border-width': 3 } },
+                { selector: '.gray', style: { 'background-color': '#475569', 'border-color': '#94a3b8', 'color': '#f1f5f9' } },
+                { selector: 'edge', style: { 'width': 2.5, 'line-color': '#334155', 'target-arrow-shape': 'none', 'label': 'data(weight)', 'color': '#f59e0b', 'font-weight': 'bold', 'font-size': '14px', 'font-family': 'Inter, sans-serif', 'text-background-color': '#0f172a', 'text-background-opacity': 0.85, 'text-background-padding': '3px', 'text-background-shape': 'roundrectangle' }},
+                { selector: '.edge-mst', style: { 'line-color': '#10b981', 'width': 5 } },
+                { selector: '.edge-checking', style: { 'line-color': '#eab308', 'line-style': 'dashed', 'width': 4 } },
+                { selector: '.edge-discarded', style: { 'line-color': '#ef4444', 'opacity': 0.25 } }
+            ], layout: { name: 'breadthfirst', directed: false, padding: 50 }
+        });
+        updateDropdownMst();
+        attachCtxMenu(cyMst, 'mst');
+        cyMst.on('tap', async function(evt) {
+            if (isRunning) return; resetGraphStatusMst();
+            if (evt.target === cyMst) { cyMst.add({ group: 'nodes', data: { id: 'V' + (nodeCounterMst++ + 5) }, position: evt.position }); updateDropdownMst(); }
+            else if (evt.target.isNode()) {
+                if (!selectedNodeMst) { selectedNodeMst = evt.target.addClass('gray'); }
+                else { let w = await showModal("משקל הקשת (חיובי):", "1"); if (w !== null && !isNaN(w)) { cyMst.add({ group: 'edges', data: { source: selectedNodeMst.id(), target: evt.target.id(), weight: parseInt(w) } }); } selectedNodeMst.removeClass('gray'); selectedNodeMst = null; }
+            }
+        });
+    }
+
+    function updateDropdownMst() { const select = document.getElementById('startNodeMstSelect'); select.innerHTML = ''; cyMst.nodes().forEach(n => { let opt = document.createElement('option'); opt.value = n.id(); opt.innerText = n.id(); select.appendChild(opt); }); }
+    function resetGraphStatusMst() { if(!cyMst) return; cyMst.elements().removeClass('in-tree gray edge-mst edge-checking edge-discarded'); document.getElementById('mst-weight-val').innerText = '0'; document.getElementById('ds-panel').style.display = "none"; isRunning = false; hideLegend(); clearPseudoHighlight(); }
+    function clearBoardMst() { cyMst.elements().remove(); nodeCounterMst = 1; resetGraphStatusMst(); updateDropdownMst(); }
+
+    async function runPrim() {
+        showInsight('Prim'); showPseudocode('Prim'); showLegend('Prim'); resetGraphStatusMst(); isRunning = true; let totalWeight = 0;
+        const startId = document.getElementById('startNodeMstSelect').value;
+        let inTree = new Set([startId]); highlightPseudoLine(1);
+        cyMst.getElementById(startId).addClass('in-tree');
+        while (inTree.size < cyMst.nodes().length) {
+            highlightPseudoLine(3); let availableEdges = [];
+            cyMst.edges().forEach(edge => { let u = edge.source().id(); let v = edge.target().id(); if ((inTree.has(u) && !inTree.has(v)) || (inTree.has(v) && !inTree.has(u))) { availableEdges.push(edge); } });
+            if (availableEdges.length === 0) break;
+            highlightPseudoLine(4); availableEdges.sort((a, b) => a.data('weight') - b.data('weight'));
+            updateDS("קשתות אפשריות (לפי משקל)", availableEdges.map(e => `${e.source().id()}-${e.target().id()} (${e.data('weight')})`));
+            let bestEdge = availableEdges[0]; bestEdge.addClass('edge-checking'); await sleep(600);
+            highlightPseudoLine(7); bestEdge.removeClass('edge-checking').addClass('edge-mst');
+            totalWeight += bestEdge.data('weight'); document.getElementById('mst-weight-val').innerText = totalWeight;
+            let newNode = inTree.has(bestEdge.source().id()) ? bestEdge.target().id() : bestEdge.source().id();
+            highlightPseudoLine(6); inTree.add(newNode); cyMst.getElementById(newNode).addClass('in-tree'); await sleep(400);
+        }
+        isRunning = false; showToast(`Prim הסתיים — משקל: ${totalWeight}`, 'success');
+    }
+
+    async function runKruskal() {
+        showInsight('Kruskal'); showPseudocode('Kruskal'); showLegend('Kruskal'); resetGraphStatusMst(); isRunning = true; let totalWeight = 0;
+        class UnionFind {
+            constructor(nodes) { this.parent = {}; nodes.forEach(n => this.parent[n] = n); }
+            find(i) { if (this.parent[i] === i) return i; return this.parent[i] = this.find(this.parent[i]); }
+            union(i, j) { let rootI = this.find(i); let rootJ = this.find(j); if (rootI !== rootJ) { this.parent[rootI] = rootJ; return true; } return false; }
+        }
+        highlightPseudoLine(1); let uf = new UnionFind(cyMst.nodes().map(n => n.id()));
+        let sortedEdges = cyMst.edges().toArray().sort((a, b) => a.data('weight') - b.data('weight'));
+        for (let edge of sortedEdges) {
+            highlightPseudoLine(4); updateDS("קשתות שנשארו (ממוין)", sortedEdges.slice(sortedEdges.indexOf(edge)).map(e => `(${e.data('weight')})`));
+            edge.addClass('edge-checking'); await sleep(500);
+            let u = edge.source().id(); let v = edge.target().id();
+            highlightPseudoLine(5);
+            if (uf.union(u, v)) {
+                highlightPseudoLine(6); edge.removeClass('edge-checking').addClass('edge-mst');
+                cyMst.getElementById(u).addClass('in-tree'); cyMst.getElementById(v).addClass('in-tree');
+                totalWeight += edge.data('weight'); document.getElementById('mst-weight-val').innerText = totalWeight; await sleep(300);
+            } else {
+                highlightPseudoLine(10); edge.removeClass('edge-checking').addClass('edge-discarded'); await sleep(200);
+            }
+        }
+        isRunning = false; showToast(`Kruskal הסתיים — משקל: ${totalWeight}`, 'success');
+    }
+
+    // ==========================================
+    // Workspace 3: Flow
+    // ==========================================
+    let cyFlow; let flowNodeCounter = 1; let selectedFlowNode = null; let isFlowInit = false; let currentAugmentingPath = null; let currentBottleneck = 0; let dinicLevel = null;
+
+    function initFlowNetwork() {
+        cyFlow = cytoscape({
+            container: document.getElementById('cy-flow'),
+            elements: [ { data: { id: 's' } }, { data: { id: 'A' } }, { data: { id: 'B' } }, { data: { id: 'C' } }, { data: { id: 'D' } }, { data: { id: 't' } },
+                { data: { id: 'sa', source: 's', target: 'A', capacity: 10, flow: 0 } }, { data: { id: 'sc', source: 's', target: 'C', capacity: 10, flow: 0 } },
+                { data: { id: 'ab', source: 'A', target: 'B', capacity: 4, flow: 0 } }, { data: { id: 'ac', source: 'A', target: 'C', capacity: 2, flow: 0 } },
+                { data: { id: 'ad', source: 'A', target: 'D', capacity: 8, flow: 0 } }, { data: { id: 'cd', source: 'C', target: 'D', capacity: 9, flow: 0 } },
+                { data: { id: 'bt', source: 'B', target: 't', capacity: 10, flow: 0 } }, { data: { id: 'db', source: 'D', target: 'B', capacity: 6, flow: 0 } }, { data: { id: 'dt', source: 'D', target: 't', capacity: 10, flow: 0 } } ],
+            style: [
+                { selector: 'node', style: { 'background-color': '#1e293b', 'border-width': 2, 'border-color': '#475569', 'label': 'data(id)', 'color': '#e2e8f0', 'text-valign': 'center', 'text-halign': 'center', 'font-size': '16px', 'font-weight': 'bold', 'font-family': 'Inter, sans-serif', 'width': '48px', 'height': '48px', 'text-outline-color': '#1e293b', 'text-outline-width': '1px' }},
+                { selector: 'node[id="s"]', style: { 'background-color': '#059669', 'color': '#fff', 'border-color': '#10b981', 'border-width': 3 } },
+                { selector: 'node[id="t"]', style: { 'background-color': '#e11d48', 'color': '#fff', 'border-color': '#f43f5e', 'border-width': 3 } },
+                { selector: '.selected', style: { 'border-width': 4, 'border-color': '#fbbf24' } },
+                { selector: '.gray', style: { 'background-color': '#475569', 'color': '#f1f5f9' } },
+                { selector: 'edge', style: { 'width': 2.5, 'line-color': '#334155', 'target-arrow-color': '#334155', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'arrow-scale': 1.2, 'label': function(ele){ return ele.data('flow') + '/' + ele.data('capacity'); }, 'font-size': '13px', 'font-weight': 'bold', 'font-family': 'Inter, sans-serif', 'color': '#e2e8f0', 'text-background-color': '#0f172a', 'text-background-opacity': 0.9, 'text-background-padding': '3px', 'text-background-shape': 'roundrectangle', 'text-border-color': '#334155', 'text-border-width': 1 }},
+                { selector: '.edge-highlighted', style: { 'line-color': '#fbbf24', 'target-arrow-color': '#fbbf24', 'width': 4 } },
+                { selector: '.edge-backward', style: { 'line-color': '#f43f5e', 'target-arrow-color': '#f43f5e', 'line-style': 'dashed', 'width': 4 } },
+                { selector: '.edge-checking', style: { 'line-color': '#a855f7', 'target-arrow-color': '#a855f7', 'line-style': 'dashed', 'width': 4 } },
+                { selector: '.edge-saturated', style: { 'line-color': '#dc2626', 'target-arrow-color': '#dc2626', 'width': 4 } }
+            ], layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.5, padding: 50 }
+        });
+        attachCtxMenu(cyFlow, 'flow');
+        cyFlow.on('tap', async function(evt) {
+            if (isRunning) return; cleanFlowColors();
+            if (evt.target === cyFlow) { cyFlow.add({ group: 'nodes', data: { id: 'V' + flowNodeCounter++ }, position: evt.position }); }
+            else if (evt.target.isNode()) {
+                if (!selectedFlowNode) { selectedFlowNode = evt.target.addClass('selected'); }
+                else { if (selectedFlowNode.id() !== evt.target.id()) { let cap = await showModal("קיבולת (Capacity):", "10"); if (cap !== null && !isNaN(cap) && parseInt(cap) > 0) { cyFlow.add({ group: 'edges', data: { id: selectedFlowNode.id() + evt.target.id(), source: selectedFlowNode.id(), target: evt.target.id(), capacity: parseInt(cap), flow: 0 } }); } } selectedFlowNode.removeClass('selected'); selectedFlowNode = null; }
+            }
+        });
+    }
+
+    function setFlowStatus(text) { document.getElementById('status-flow-text').innerHTML = text; }
+    function cleanFlowColors() { if(!cyFlow) return; cyFlow.nodes().removeStyle('background-color color'); cyFlow.elements().removeClass('edge-highlighted edge-backward edge-checking gray'); }
+
+    async function findAugmentingPathBFS() {
+        if (isRunning) return; isRunning = true; dinicLevel = null; cleanFlowColors(); showInsight('EdmondsKarp'); showPseudocode('EdmondsKarp'); showLegend('EdmondsKarp');
+        highlightPseudoLine(2); setFlowStatus("אדמונדס-קארפ: מחפש מסלול בגרף השיורי...");
+        let queue = [{ id: 's', path: [], bottleneck: Infinity }]; let visited = new Set(['s']); let foundPath = null;
+        while (queue.length > 0) {
+            let curr = queue.shift(); let uId = curr.id; let u = cyFlow.getElementById(uId);
+            if (uId === 't') { foundPath = curr; break; }
+            u.addClass('gray'); await sleep(150);
+            let edges = u.connectedEdges();
+            for (let edge of edges) {
+                let sourceId = edge.source().id(); let targetId = edge.target().id(); let vId, resCap, isForward;
+                if (sourceId === uId) { vId = targetId; resCap = edge.data('capacity') - edge.data('flow'); isForward = true; } else { vId = sourceId; resCap = edge.data('flow'); isForward = false; }
+                if (resCap > 0 && !visited.has(vId)) { visited.add(vId); queue.push({ id: vId, path: [...curr.path, { edge, isForward, resCap }], bottleneck: Math.min(curr.bottleneck, resCap) }); }
+            }
+            u.removeClass('gray');
+        }
+        if (foundPath) {
+            highlightPseudoLine(5); currentAugmentingPath = foundPath.path; currentBottleneck = foundPath.bottleneck;
+            setFlowStatus(`נמצא מסלול! צוואר בקבוק: <strong style="color: var(--accent-rose);">${currentBottleneck}</strong>`);
+            for (let step of currentAugmentingPath) { step.edge.addClass(step.isForward ? 'edge-highlighted' : 'edge-backward'); await sleep(150); }
+        } else { highlightPseudoLine(3); setFlowStatus("<strong style='color: var(--accent-emerald);'>הגענו לזרימה מקסימלית!</strong>"); currentAugmentingPath = null; currentBottleneck = 0; }
+        isRunning = false;
+    }
+
+    async function pushFlow() {
+        if (isRunning) return; if (!currentAugmentingPath) { showToast("קודם צריך לחפש מסלול!", 'warning'); return; } isRunning = true;
+        highlightPseudoLine(6); setFlowStatus("מעדכן זרימה...");
+        for (let step of currentAugmentingPath) {
+            let edge = step.edge; let currentFlow = edge.data('flow');
+            if (step.isForward) { highlightPseudoLine(8); edge.data('flow', currentFlow + currentBottleneck); } else { highlightPseudoLine(10); edge.data('flow', currentFlow - currentBottleneck); }
+            edge.removeClass('edge-highlighted edge-backward').addClass('edge-checking'); await sleep(200); edge.removeClass('edge-checking');
+            if (edge.data('flow') === edge.data('capacity')) edge.addClass('edge-saturated'); else edge.removeClass('edge-saturated');
+        }
+        let maxFlowEl = document.getElementById('max-flow-val'); maxFlowEl.innerText = parseInt(maxFlowEl.innerText) + currentBottleneck;
+        cleanFlowColors(); currentAugmentingPath = null; currentBottleneck = 0; setFlowStatus("זרימה עודכנה! חפש מסלול חדש."); isRunning = false;
+        showToast('זרימה עודכנה בהצלחה', 'success');
+    }
+
+    async function buildDinicLevelGraph() {
+        if (isRunning) return; isRunning = true; currentAugmentingPath = null; cleanFlowColors(); showInsight('Dinic'); showPseudocode('Dinic'); showLegend('Dinic');
+        const levelColors = ['#10b981', '#3b82f6', '#eab308', '#f97316', '#a855f7', '#06b6d4'];
+        dinicLevel = {}; cyFlow.nodes().forEach(n => dinicLevel[n.id()] = -1); dinicLevel['s'] = 0; let q = ['s'];
+        highlightPseudoLine(2); setFlowStatus("<span style='color: var(--accent-purple);'>דיניץ (1): בונה גרף רמות ב-BFS...</span>");
+        while (q.length > 0) {
+            let uId = q.shift(); let u = cyFlow.getElementById(uId); u.addClass('gray'); await sleep(100);
+            let edges = u.connectedEdges();
+            for (let edge of edges) {
+                let isForward = edge.source().id() === uId; let vId = isForward ? edge.target().id() : edge.source().id(); let resCap = isForward ? edge.data('capacity') - edge.data('flow') : edge.data('flow');
+                if (resCap > 0 && dinicLevel[vId] === -1) {
+                    dinicLevel[vId] = dinicLevel[uId] + 1; q.push(vId);
+                    if (vId !== 't') cyFlow.getElementById(vId).style({ 'background-color': levelColors[dinicLevel[vId] % levelColors.length], 'color': '#fff' });
+                    edge.addClass('edge-checking'); await sleep(70); edge.removeClass('edge-checking');
+                }
+            }
+            u.removeClass('gray');
+        }
+        if (dinicLevel['t'] === -1) { highlightPseudoLine(3); setFlowStatus("<strong style='color: var(--accent-emerald);'>זרימה מקסימלית הושגה!</strong>"); dinicLevel = null; showToast('זרימה מקסימלית הושגה!', 'success'); }
+        else { highlightPseudoLine(5); setFlowStatus(`<span style='color: var(--accent-purple);'>גרף רמות מוכן (מרחק ${dinicLevel['t']}). לחץ "זרימה חוסמת".</span>`); }
+        isRunning = false;
+    }
+
+    async function pushDinicBlockingFlow() {
+        if (isRunning) return; if (!dinicLevel) { showToast("לחץ קודם על 'בנה רמות'", 'warning'); return; } isRunning = true;
+        highlightPseudoLine(6); setFlowStatus("<span style='color: var(--accent-purple);'>דיניץ (2): דוחף זרימה ב-DFS...</span>");
+        let totalPushed = 0;
+        async function dfs(uId, flowIn) {
+            if (uId === 't') return flowIn;
+            let u = cyFlow.getElementById(uId); let edges = u.connectedEdges(); let pushed = 0;
+            for (let edge of edges) {
+                let isForward = edge.source().id() === uId; let vId = isForward ? edge.target().id() : edge.source().id(); let resCap = isForward ? edge.data('capacity') - edge.data('flow') : edge.data('flow');
+                if (resCap > 0 && dinicLevel[vId] === dinicLevel[uId] + 1) {
+                    highlightPseudoLine(7); edge.addClass('edge-checking'); await sleep(70);
+                    let trushFlow = await dfs(vId, Math.min(flowIn - pushed, resCap));
+                    if (trushFlow > 0) {
+                        if (isForward) edge.data('flow', edge.data('flow') + trushFlow); else edge.data('flow', edge.data('flow') - trushFlow);
+                        if (edge.data('flow') === edge.data('capacity')) edge.addClass('edge-saturated'); else edge.removeClass('edge-saturated');
+                        edge.removeClass('edge-checking').addClass(isForward ? 'edge-highlighted' : 'edge-backward'); await sleep(100); edge.removeClass('edge-highlighted edge-backward');
+                        pushed += trushFlow; if (pushed === flowIn) break;
+                    } else { edge.removeClass('edge-checking'); }
+                }
+            }
+            return pushed;
+        }
+        while(true) { let pushedNow = await dfs('s', Infinity); if(pushedNow === 0) break; totalPushed += pushedNow; }
+        let maxFlowEl = document.getElementById('max-flow-val'); maxFlowEl.innerText = parseInt(maxFlowEl.innerText) + totalPushed;
+        highlightPseudoLine(9); setFlowStatus(`<span style='color: var(--accent-purple);'>נדחפה זרימה של ${totalPushed}. <b>חזור לשלב 1.</b></span>`);
+        dinicLevel = null; cyFlow.nodes().removeStyle('background-color color'); isRunning = false;
+    }
+
+    async function runDinicAuto() { if (isRunning) return; await buildDinicLevelGraph(); if (!dinicLevel) return; let waitCheck = setInterval(async () => { if (!isRunning) { clearInterval(waitCheck); await pushDinicBlockingFlow(); if (dinicLevel === null && document.getElementById('status-flow-text').innerText.includes('חזור לשלב 1')) { setTimeout(runDinicAuto, 500); } } }, 100); }
+    function resetFlowGraph() { if(!cyFlow) return; cleanFlowColors(); cyFlow.elements().removeClass('edge-saturated'); cyFlow.edges().forEach(edge => edge.data('flow', 0)); document.getElementById('max-flow-val').innerText = '0'; setFlowStatus("מצב עריכה"); currentAugmentingPath = null; dinicLevel = null; hideLegend(); clearPseudoHighlight(); }
+    function clearFlowBoard() { if(!cyFlow) return; cyFlow.elements().remove(); cyFlow.add([ { group: 'nodes', data: { id: 's' } }, { group: 'nodes', data: { id: 't' } } ]); flowNodeCounter = 1; document.getElementById('max-flow-val').innerText = '0'; setFlowStatus("לוח נוקה"); currentAugmentingPath = null; dinicLevel = null; }
+
+    // ==========================================
+    // Navigation
+    // ==========================================
+    function switchWorkspace(mode) {
+        if(isRunning) return;
+        currentWorkspace = mode;
+        document.getElementById('tab-paths').classList.toggle('active', mode === 'paths');
+        document.getElementById('tab-mst').classList.toggle('active', mode === 'mst');
+        document.getElementById('tab-flow').classList.toggle('active', mode === 'flow');
+        document.getElementById('results-panel').style.display = mode === 'paths' ? 'block' : 'none';
+        document.getElementById('ds-panel').style.display = 'none';
+        document.getElementById('insight-panel').style.display = 'none';
+        document.getElementById('pseudo-panel').style.display = 'none';
+        document.getElementById('legend-panel').style.display = 'none';
+        document.getElementById('compare-panel').style.display = 'none';
+        pseudoVisible = false;
+        ['paths', 'mst', 'flow'].forEach(m => {
+            if (m === mode) { document.getElementById('workspace-' + m).classList.add('active'); }
+            else { document.getElementById('workspace-' + m).classList.remove('active'); }
+        });
+        if (mode === 'paths' && !cyPaths) initPathsGraph();
+        if (mode === 'mst' && !isMstInit) { initMstGraph(); isMstInit = true; }
+        if (mode === 'flow' && !isFlowInit) { initFlowNetwork(); isFlowInit = true; }
+    }
+
+    function generateRandomGraph(mode) {
+        if (isRunning) return;
+        const cy = mode === 'paths' ? cyPaths : (mode === 'mst' ? cyMst : cyFlow);
+        if (!cy) return;
+        
+        let clearFunc = mode === 'paths' ? clearBoardPaths : (mode === 'mst' ? clearBoardMst : clearFlowBoard);
+        clearFunc();
+
+        const nodeCount = Math.floor(Math.random() * 4) + 4; // 4 to 7 extra nodes
+        let nodes = [];
+        const w = cy.width() || 800;
+        const h = cy.height() || 600;
+
+        if (mode === 'flow') {
+            nodes.push('s');
+            nodes.push('t');
+        }
+
+        for (let i = 0; i < nodeCount; i++) {
+            let id;
+            if (mode === 'flow') {
+                id = 'V' + flowNodeCounter++;
+            } else {
+                let charCode = mode === 'paths' ? nodeCounterPaths++ : nodeCounterMst++;
+                id = String.fromCharCode(65 + charCode);
+            }
+            
+            nodes.push(id);
+            cy.add({
+                group: 'nodes',
+                data: { id: id },
+                position: { x: 100 + Math.random() * (w - 200), y: 100 + Math.random() * (h - 200) }
+            });
+        }
+
+        for (let i = 0; i < nodes.length; i++) {
+            let edgesToCreate = mode === 'mst' ? 2 : (mode === 'flow' ? 2 : 1);
+            for (let e = 0; e < edgesToCreate; e++) {
+                let targetIdx = Math.floor(Math.random() * nodes.length);
+                if (targetIdx !== i) {
+                    let weight = Math.floor(Math.random() * 20) + 1;
+                    let source = nodes[i];
+                    let target = nodes[targetIdx];
+                    
+                    if (mode === 'flow' && target === 's') continue;
+                    if (mode === 'flow' && source === 't') continue;
+                    
+                    if (cy.edges(`[source="${source}"][target="${target}"]`).length === 0 &&
+                        (mode === 'paths' || cy.edges(`[source="${target}"][target="${source}"]`).length === 0)) {
+                        
+                        let edgeId = mode === 'flow' ? source + target : undefined;
+                        cy.add({
+                            group: 'edges',
+                            data: {
+                                id: edgeId,
+                                source: source,
+                                target: target,
+                                weight: mode === 'flow' ? undefined : weight,
+                                capacity: mode === 'flow' ? weight : undefined,
+                                flow: mode === 'flow' ? 0 : undefined
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        
+        if (mode === 'paths') updateDropdownPaths();
+        if (mode === 'mst') updateDropdownMst();
+    }
+
+    window.onload = () => { initPathsGraph(); };
+</script>
+
+</body>
+</html>
