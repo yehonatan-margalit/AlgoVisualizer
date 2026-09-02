@@ -1,44 +1,44 @@
-# 🧠 מעבדת אלגוריתמים אינטראקטיבית (AlgoVisualizer)
+# 🧠 Interactive Algorithm Visualizer Lab (AlgoVisualizer)
 
-ברוכים הבאים למעבדת האלגוריתמים! 
-פרויקט זה הוא כלי ויזואליזציה אינטראקטיבי שנועד לקחת את התיאוריה ה"יבשה" של אלגוריתמים על גרפים ולהפוך אותה למשהו שאפשר לראות, לגעת בו ולהבין באמת. המערכת נבנתה ככלי עזר לסטודנטים למדעי המחשב באוניברסיטת בר-אילן, ומושלמת לכל מי שרוצה להבין לעומק את אלגוריתמי הליבה במדעי המחשב.
+Welcome to the Algorithm Lab! 
+This project is an interactive visualization tool designed to take the dry theory of Graph Algorithms and turn it into something you can see, touch, and truly understand. Built as a study aid for Computer Science students at Bar-Ilan University, it's perfect for anyone looking to deeply grasp core CS algorithms.
 
-בגרסה החדשה והמרשימה, המערכת עברה שדרוג לעיצוב מודרני מרהיב (Dark Mode & Glassmorphism), תמיכה מלאה בעברית (RTL), ואנימציות מתקדמות הממחישות את תהליכי האלגוריתמים צעד אחר צעד.
+In this **impressive new version**, the system has been upgraded to a stunning modern design featuring **Dark Mode & Glassmorphism**, full **Hebrew (RTL)** support, and advanced smooth animations that demonstrate the algorithmic processes step-by-step.
 
-🚀 **[למעבר למערכת חיה - לחצו כאן](https://yehonatan-margalit.github.io/AlgoVisualizer/)**
+🚀 **[Click here for the Live Demo](https://yehonatan-margalit.github.io/AlgoVisualizer/)**
 
-## 🎯 מה בפנים?
-המערכת מחולקת ל-3 סביבות עבודה מרכזיות, המכסות את נושאי הליבה בתורת הגרפים:
+## 🎯 What's Inside?
+The system is divided into 3 main workspaces, covering the core topics of graph theory:
 
-### 1. 🛤️ מסלולים קצרים וסריקות (גרפים מכוונים)
-* **חיפוש לעומק (DFS):** מעקב אחר זמני גילוי/סיום ($d, f$) ומחסנית הקריאות בזמן אמת.
-* **חיפוש לרוחב (BFS):** תצוגה ויזואלית של התור, מרחקי צמתים וצביעה לפי רמות.
-* **אלגוריתם דייקסטרה (Dijkstra):** מציאת המסלול הקצר ביותר באמצעות תור עדיפויות (Priority Queue) ושחרור צלעות (Relaxation).
-* **בלמן-פורד (Bellman-Ford):** טיפול במשקלים שליליים וזיהוי אוטומטי של מעגלים שליליים.
+### 1. 🛤️ Shortest Paths & Traversals (Directed Graphs)
+* **Depth-First Search (DFS):** Watch discovery/finish times ($d, f$) and the Call Stack in real-time.
+* **Breadth-First Search (BFS):** Visualize the Queue, node distances, and visual level-based coloring.
+* **Dijkstra's Algorithm:** Find the shortest path using a Priority Queue and edge relaxation.
+* **Bellman-Ford:** Handle negative weights and automatically detect negative cycles.
 
-### 2. 🌲 עץ פורש מינימלי - MST (גרפים לא מכוונים)
-* **אלגוריתם פרים (Prim):** בניית עץ צומת אחר צומת מתוך תור עדיפויות.
-* **אלגוריתם קרוסקל (Kruskal):** מיון עולמי של צלעות והוספתן לעץ תוך דחיית צלעות הסוגרות מעגל (בסימולציה של Union-Find).
+### 2. 🌲 Minimum Spanning Tree - MST (Undirected Graphs)
+* **Prim's Algorithm:** Grow the MST node-by-node using a priority-based selection.
+* **Kruskal's Algorithm:** Global edge sorting, adding edges to the tree while rejecting those that form cycles (simulating Union-Find).
 
-### 3. 🌊 רשתות זרימה (Max Flow)
-* **אדמונדס-קארפ (Edmonds-Karp):** מציאת מסלולי שיפור ברשת השיורית בעזרת BFS ודחיפת זרימה צעד אחר צעד (עם הצגת צוואר הבקבוק).
-* **אלגוריתם דיניץ (Dinic):** פירוק ויזואלי מרהיב לשלבים: בניית **גרף שכבות** (Level Graph) הכולל צביעה דינמית לפי מרחקים, ולאחר מכן מציאת **זרימה חוסמת** (Blocking Flow) בעזרת DFS. 
+### 3. 🌊 Flow Networks (Max Flow)
+* **Edmonds-Karp:** Find augmenting paths in the residual graph using BFS and push flow step-by-step (displaying the bottleneck).
+* **Dinic's Algorithm:** A spectacular visual breakdown into phases: Building a **Level Graph** (with dynamic color-coding for distances), followed by finding a **Blocking Flow** using DFS. 
 
-## ✨ פיצ'רים מיוחדים (בגרסה החדשה)
-* **🎨 עיצוב מודרני וחלק:** ממשק משתמש פרימיום, עיצוב כהה משולב אפקטי זכוכית, אנימציות רכות ומעברים המקלים על ההבנה.
-* **💡 חלונית טיפים למבחן:** "שליף" תיאורטי מובנה הכולל סיבוכיות זמן ריצה ($O$), סיבוכיות מקום ומקרי קצה עבור כל אלגוריתם.
-* **📦 מעקב מבני נתונים חי:** צפייה ישירה לתוך "הזיכרון" של האלגוריתם – מעקב אחר התור, המחסנית או תור העדיפויות בעודם משתנים בזמן אמת.
-* **✏️ עורך גרפים דינמי (Drag & Drop):** הוספת צמתים בלחיצה על הקנבס, גרירה בין צמתים ליצירת צלעות, והגדרת משקלים או קיבולות מותאמות אישית בקלות.
+## ✨ Special Features (New Version)
+* **🎨 Modern & Sleek Design:** A premium user interface featuring a dark theme combined with glassmorphism effects, soft animations, and smooth transitions that ease understanding.
+* **💡 Exam Insights Panel:** A built-in theoretical cheat sheet covering time complexities ($O$), space complexities, and classic use cases for each algorithm.
+* **📦 Real-time Data Structures Window:** Peek "into the memory" of the algorithm and watch the Queue, Stack, or Priority Queue change in real-time.
+* **✏️ Dynamic Graph Editor:** Users can click the canvas to add nodes, drag between nodes to create edges, and set custom weights or capacities effortlessly.
 
-## 🛠️ טכנולוגיות
-הפרויקט בנוי כ-Single Page Application (SPA) שרץ במלואו בצד הלקוח (Client-side), מה שמאפשר טעינה מיידית ללא צורך בשרת (Backend):
-* **HTML5 & CSS3** - עיצוב חדשני עם תמיכה מלאה ביישור לימין (RTL).
-* **JavaScript (Vanilla JS)** - מנוע לוגי עצמאי להרצת האלגוריתמים.
-* **[Cytoscape.js](https://js.cytoscape.org/)** - מנוע עוצמתי לרינדור והצגת תורת הגרפים בצורה ויזואלית וחלקה.
+## 🛠️ Technologies Used
+The project is built as a Single Page Application (SPA) running entirely on the Client-side, allowing instant loading with zero backend setup:
+* **HTML5 & CSS3** for a modern, cutting-edge UI (Glassmorphism, Dark Theme) with full RTL support.
+* **JavaScript (Vanilla JS)** for the pure algorithmic logic and execution engine.
+* **[Cytoscape.js](https://js.cytoscape.org/)** - A powerful graph theory rendering engine for smooth network visualization.
 
-## 👨‍💻 אודות
-פותח על ידי **יהונתן מרגלית** (Yehonatan Margalit).
-כלי זה נבנה כפרויקט לימודי מעשי כדי להמחיש ולחדד את ההבנה התיאורטית של אלגוריתמים בקרב סטודנטים למדעי המחשב.
+## 👨‍💻 About
+Developed by **Yehonatan Margalit**.
+This tool was built as a hands-on educational project to demonstrate and sharpen theoretical algorithmic understanding for Computer Science students.
 
 ---
-*הכלי עזר לכם להתכונן למבחן? פרגנו ב-⭐️ Star למאגר!*
+*Did you find this tool helpful for your algorithm exams? Consider giving the project a ⭐️ Star!*
